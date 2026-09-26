@@ -14,6 +14,14 @@ struct ManagedHomeView: View {
     @State private var pendingLink: SetupLink?
     @State private var hint: String?
     @State private var missingApp: SetupLink?
+    @State private var retriesLeft = 0
+    @State private var retryTask: Task<Void, Never>?
+    @State private var retryIn: Int?
+
+    private static let maxAutoRetries = 2
+
+    /// While waiting to retry with the next code, present it as reconnecting.
+    private var phase: TunnelPhase { retryIn != nil ? .reconnecting : vpn.phase }
 
     /// Microsoft's Windows App (formerly Remote Desktop) on the App Store.
     private let rdpAppURL = URL(string: "https://apps.apple.com/app/id714464092")!
@@ -24,7 +32,7 @@ struct ManagedHomeView: View {
             ScrollView {
                 VStack(spacing: 10) {
                     StatusHeroView(
-                        phase: vpn.phase,
+                        phase: phase,
                         profileName: (config?.username ?? "").isEmpty ? nil : config?.username,
                         connectedAt: vpn.connectedAt,
                         vpnAddress: vpn.vpnAddress,
@@ -97,31 +105,33 @@ struct ManagedHomeView: View {
             Text("No app on this phone can open “\(missingApp?.title ?? "")”.")
         }
         .onChange(of: vpn.phase) { phase in
+            if phase == .connected { retriesLeft = 0 }
             guard let link = pendingLink else { return }
             if phase == .connected {
                 pendingLink = nil
                 hint = nil
                 launch(link)
-            } else if phase == .failed || phase == .disconnected {
+            } else if (phase == .failed || phase == .disconnected) && retryTask == nil {
                 pendingLink = nil
                 hint = nil
             }
         }
+        .onChange(of: vpn.authRejections) { _ in scheduleRetryIfUseful() }
     }
 
     private var connectBar: some View {
         VStack(spacing: 0) {
             Divider().overlay(Palette.line)
             Group {
-                switch vpn.phase {
+                switch phase {
                 case .connected:
-                    Button("Disconnect") { vpn.disconnect() }.buttonStyle(PrimaryButtonStyle(prominent: false))
+                    Button("Disconnect") { stop() }.buttonStyle(PrimaryButtonStyle(prominent: false))
                 case .connecting, .reconnecting:
-                    Button("Cancel") { vpn.disconnect() }.buttonStyle(PrimaryButtonStyle(prominent: false))
+                    Button("Cancel") { stop() }.buttonStyle(PrimaryButtonStyle(prominent: false))
                 case .disconnecting:
                     Button("Disconnecting…") {}.buttonStyle(PrimaryButtonStyle(prominent: false)).disabled(true)
                 case .disconnected, .failed:
-                    Button("Connect") { Task { await connect() } }.buttonStyle(PrimaryButtonStyle())
+                    Button("Connect") { userConnect() }.buttonStyle(PrimaryButtonStyle())
                 }
             }
             .padding(.horizontal, 20)
@@ -131,6 +141,52 @@ struct ManagedHomeView: View {
     }
 
     // MARK: Actions
+
+    private func userConnect() {
+        cancelRetry()
+        retriesLeft = Self.maxAutoRetries
+        Task { await connect() }
+    }
+
+    private func stop() {
+        cancelRetry()
+        retriesLeft = 0
+        pendingLink = nil
+        hint = nil
+        vpn.disconnect()
+    }
+
+    /// A rejected sign-in with a generated code is usually timing (the code
+    /// rolled over, or the server refuses a code it already saw). Retry once
+    /// the next code is out, a limited number of times so a real problem
+    /// doesn't trip the server's brute-force protection.
+    private func scheduleRetryIfUseful() {
+        guard retriesLeft > 0, retryTask == nil, let totp = managed.totp else { return }
+        retriesLeft -= 1
+        retryTask = Task {
+            var left = totp.secondsLeft() + 2
+            while left > 0 {
+                retryIn = left
+                hint = "Code rejected — trying again with the next code in \(left) s"
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+                left -= 1
+            }
+            retryIn = nil
+            hint = pendingLink.map { "Connecting — \($0.title) opens when the VPN is up." }
+            retryTask = nil
+            await connect()
+        }
+    }
+
+    private func cancelRetry() {
+        retryTask?.cancel()
+        retryTask = nil
+        if retryIn != nil {
+            retryIn = nil
+            hint = nil
+        }
+    }
 
     /// Connects, generating the 2FA code from the stored secret when there is one.
     private func connect(typedPassword: String? = nil, typedCode: String? = nil) async {
@@ -162,8 +218,9 @@ struct ManagedHomeView: View {
             return
         }
         pendingLink = link
+        guard retryTask == nil else { return } // already reconnecting; the link opens once connected
         hint = "Connecting — \(link.title) opens when the VPN is up."
-        if !vpn.phase.isActive { Task { await connect() } }
+        if !vpn.phase.isActive { userConnect() }
     }
 
     private func launch(_ link: SetupLink) {

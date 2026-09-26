@@ -27,7 +27,7 @@ import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Notes
+import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.Pin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -89,7 +89,7 @@ fun ManagedHomeScreen(
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_logs)) },
-                                leadingIcon = { Icon(Icons.Outlined.Notes, null) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Notes, null) },
                                 onClick = { menuOpen = false; onOpenLogs() },
                             )
                             DropdownMenuItem(

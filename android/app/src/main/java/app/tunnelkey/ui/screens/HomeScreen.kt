@@ -24,7 +24,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.Notes
+import androidx.compose.material.icons.automirrored.outlined.Notes
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
@@ -100,7 +100,7 @@ fun HomeScreen(
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_logs)) },
-                                leadingIcon = { Icon(Icons.Outlined.Notes, null) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.Notes, null) },
                                 onClick = { menuOpen = false; onOpenLogs() },
                             )
                             DropdownMenuItem(

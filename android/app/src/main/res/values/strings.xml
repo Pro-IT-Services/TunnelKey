@@ -151,6 +151,7 @@
     <string name="link_opens_after_connect">Connecting — %1$s opens when the VPN is up.</string>
     <string name="link_no_app">No app on this phone can open “%1$s”.</string>
     <string name="link_get_rdp_app">Get Windows App</string>
+    <string name="retry_next_code">Code rejected — trying again with the next code in %1$d s</string>
     <string name="waiting_fresh_code">Waiting for a fresh code…</string>
     <string name="action_settings">Security</string>
     <string name="action_remove_config">Remove configuration</string>

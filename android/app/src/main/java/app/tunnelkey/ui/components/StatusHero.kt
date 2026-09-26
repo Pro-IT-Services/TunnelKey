@@ -34,7 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -174,19 +177,15 @@ private fun TunnelArches(tint: Color, flowing: Boolean, animate: Boolean) {
                 PathEffect.dashPathEffect(floatArrayOf(dash * 3, dash), phase = -flow * dash * 4 * (i + 1))
             } else null
 
-            // Legs
-            drawLine(color, Offset(inset, bottom), Offset(inset, archTop + radius), stroke, StrokeCap.Round, effect)
-            drawLine(color, Offset(size.width - inset, bottom), Offset(size.width - inset, archTop + radius), stroke, StrokeCap.Round, effect)
-            // Vault
-            drawArc(
-                color = color,
-                startAngle = 180f,
-                sweepAngle = 180f,
-                useCenter = false,
-                topLeft = Offset(inset, archTop),
-                size = Size(w, w),
-                style = Stroke(stroke, cap = StrokeCap.Round, pathEffect = effect),
-            )
+            // One path per arch (legs + vault) so the semi-transparent stroke
+            // doesn't overlap itself where they meet.
+            val path = Path().apply {
+                moveTo(inset, bottom)
+                lineTo(inset, archTop + radius)
+                arcTo(Rect(Offset(inset, archTop), Size(w, w)), 180f, 180f, false)
+                lineTo(size.width - inset, bottom)
+            }
+            drawPath(path, color, style = Stroke(stroke, cap = StrokeCap.Round, join = StrokeJoin.Round, pathEffect = effect))
         }
         // Ground line
         drawLine(idle.copy(alpha = 0.5f), Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())

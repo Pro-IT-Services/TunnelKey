@@ -135,6 +135,7 @@ private fun App(vm: MainViewModel) {
     val managedConfig by vm.managedConfig.collectAsStateWithLifecycle()
     val unlocked by vm.unlocked.collectAsStateWithLifecycle()
     val hint by vm.hint.collectAsStateWithLifecycle()
+    val retryIn by vm.retryIn.collectAsStateWithLifecycle()
 
     val selected = profiles.firstOrNull { it.id == selectedId } ?: profiles.firstOrNull()
     var error by remember { mutableStateOf<Pair<Int, String>?>(null) }
@@ -250,7 +251,8 @@ private fun App(vm: MainViewModel) {
             if (cfg != null) {
                 ManagedHomeScreen(
                     config = cfg,
-                    status = status,
+                    // While waiting to retry with the next code, present it as reconnecting.
+                    status = if (retryIn != null) status.copy(phase = app.tunnelkey.vpn.Phase.Reconnecting) else status,
                     hint = hint,
                     onConnect = { withVpnPermission { vm.connectManaged() } },
                     onDisconnect = vm::disconnect,

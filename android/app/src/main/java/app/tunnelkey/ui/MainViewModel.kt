@@ -24,7 +24,9 @@ import kotlinx.coroutines.delay
 import app.tunnelkey.R
 import app.tunnelkey.managed.ManagedLink
 import app.tunnelkey.provision.SetupPayload
+import app.tunnelkey.vpn.FailureKind
 import app.tunnelkey.vpn.Phase
+import kotlinx.coroutines.Job
 import app.tunnelkey.vpn.TunnelStatus
 import javax.crypto.Cipher
 import kotlinx.coroutines.launch
@@ -103,21 +105,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val events = _events.receiveAsFlow()
 
     init {
-        // Open a link that was tapped while disconnected once the tunnel is up.
         viewModelScope.launch {
+            var previous = status.value.phase
             status.collect { st ->
-                val link = pendingLink ?: return@collect
-                when (st.phase) {
-                    Phase.Connected -> {
+                val enteredFailed = st.phase == Phase.Failed && previous != Phase.Failed
+                previous = st.phase
+                when {
+                    st.phase == Phase.Connected -> {
+                        autoRetriesLeft = 0
+                        val link = pendingLink ?: return@collect
                         pendingLink = null
                         _hint.value = null
                         _events.send(UiEvent.OpenLink(link))
                     }
-                    Phase.Failed, Phase.Disconnected -> if (!st.isActive && st.profileId != null) {
+                    enteredFailed && shouldAutoRetry(st) -> scheduleRetry()
+                    enteredFailed || st.phase == Phase.Disconnected && retryJob == null -> {
                         pendingLink = null
                         _hint.value = null
                     }
-                    else -> Unit
                 }
             }
         }
@@ -244,7 +249,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _signIn.value = null
     }
 
-    fun disconnect() = TunnelService.disconnect(getApplication())
+    fun disconnect() {
+        cancelRetry()
+        autoRetriesLeft = 0
+        pendingLink = null
+        TunnelService.disconnect(getApplication())
+    }
 
     fun clearLog() = TunnelState.clearLog()
 
@@ -269,7 +279,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Connect the provisioned profile, generating the 2FA code when the secret is stored. */
-    fun connectManaged() = viewModelScope.launch {
+    fun connectManaged() {
+        cancelRetry()
+        autoRetriesLeft = MAX_AUTO_RETRIES
+        startManaged()
+    }
+
+    private fun startManaged() = viewModelScope.launch {
         val cfg = managed.config.value ?: return@launch
         val profile = repo.get(cfg.profileId) ?: return@launch
         val password = managed.password()
@@ -296,17 +312,73 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return totp.code()
     }
 
+    // ---- Automatic retry with the next code ------------------------------
+
+    private var retryJob: Job? = null
+    private var autoRetriesLeft = 0
+
+    /** Seconds until the automatic retry, while one is scheduled. */
+    private val _retryIn = MutableStateFlow<Int?>(null)
+    val retryIn: StateFlow<Int?> = _retryIn.asStateFlow()
+
+    /**
+     * A rejected sign-in with a generated code is usually a timing problem
+     * (the code rolled over, or the server refuses a code it has seen). Retry
+     * once the next code is out, a limited number of times so a real problem
+     * doesn't trip the server's brute-force protection.
+     */
+    private fun shouldAutoRetry(st: TunnelStatus): Boolean {
+        val cfg = managed.config.value ?: return false
+        return autoRetriesLeft > 0 &&
+            st.profileId == cfg.profileId &&
+            (st.failure == FailureKind.AuthFailed || st.failure == FailureKind.NeedsSignIn) &&
+            managed.totp() != null
+    }
+
+    private fun scheduleRetry() {
+        val totp = managed.totp() ?: return
+        autoRetriesLeft--
+        cancelRetry()
+        retryJob = viewModelScope.launch {
+            // Wait for the next time step, plus a little for clock skew.
+            var left = totp.secondsLeft() + 2
+            while (left > 0) {
+                _retryIn.value = left
+                _hint.value = getApplication<Application>().getString(R.string.retry_next_code, left)
+                delay(1000)
+                left--
+            }
+            _retryIn.value = null
+            _hint.value = pendingLink?.let {
+                getApplication<Application>().getString(R.string.link_opens_after_connect, it.title)
+            }
+            retryJob = null
+            startManaged()
+        }
+    }
+
+    private fun cancelRetry() {
+        retryJob?.cancel()
+        retryJob = null
+        if (_retryIn.value != null) {
+            _retryIn.value = null
+            _hint.value = null
+        }
+    }
+
     fun openLink(link: ManagedLink) {
         if (status.value.phase == Phase.Connected) {
             viewModelScope.launch { _events.send(UiEvent.OpenLink(link)) }
             return
         }
         pendingLink = link
+        if (retryJob != null) return // already reconnecting; the link opens once connected
         _hint.value = getApplication<Application>().getString(R.string.link_opens_after_connect, link.title)
         if (!status.value.isActive) connectManaged()
     }
 
     private companion object {
         const val KEY_SELECTED = "selected_profile"
+        const val MAX_AUTO_RETRIES = 2
     }
 }

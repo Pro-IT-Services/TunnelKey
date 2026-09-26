@@ -18,6 +18,8 @@ final class VPNController: ObservableObject {
     @Published private(set) var bytesOut: Int = 0
     @Published private(set) var vpnAddress = ""
     @Published var errorMessage: String?
+    /// Incremented each time the server rejects the sign-in, so views can react.
+    @Published private(set) var authRejections = 0
 
     private var manager: NETunnelProviderManager?
     private var statusObserver: NSObjectProtocol?
@@ -139,6 +141,12 @@ final class VPNController: ObservableObject {
                 guard let self else { return }
                 if let error {
                     self.errorMessage = error.localizedDescription
+                    let e = error as NSError
+                    if e.domain == Shared.tunnelErrorDomain,
+                       e.code == Shared.TunnelErrorCode.authFailed.rawValue
+                        || e.code == Shared.TunnelErrorCode.authFailedTwoFactor.rawValue {
+                        self.authRejections += 1
+                    }
                 } else {
                     self.phase = .disconnected
                 }
