@@ -62,7 +62,15 @@ class OpenVpnClient(callbacks: Callbacks) : Closeable {
 
     class ConnectException(val status: String, message: String) : Exception(message)
 
-    private var handle: Long = nativeCreate(callbacks)
+    // Guards [handle]: stop()/stats may come from other threads while the
+    // session thread closes the client. connect() is not guarded (it blocks
+    // for the whole session and close() only runs after it returns).
+    private val lock = Any()
+    @Volatile private var handle: Long = nativeCreate(callbacks)
+
+    private inline fun <T> withHandle(fallback: T, block: (Long) -> T): T = synchronized(lock) {
+        if (handle == 0L) fallback else block(handle)
+    }
 
     fun evaluate(
         profile: String,
@@ -104,23 +112,24 @@ class OpenVpnClient(callbacks: Callbacks) : Closeable {
         throw ConnectException(status, message.ifEmpty { status })
     }
 
-    fun stop() = nativeStop(handle)
-    fun reconnect(seconds: Int) = nativeReconnect(handle, seconds)
-    fun pause(reason: String) = nativePause(handle, reason.utf8())
-    fun resume() = nativeResume(handle)
+    /** Safe from any thread, also after [close] (then it does nothing). */
+    fun stop() = withHandle(Unit) { nativeStop(it) }
+    fun reconnect(seconds: Int) = withHandle(Unit) { nativeReconnect(it, seconds) }
+    fun pause(reason: String) = withHandle(Unit) { nativePause(it, reason.utf8()) }
+    fun resume() = withHandle(Unit) { nativeResume(it) }
 
-    /** Returns (bytesIn, bytesOut). */
-    fun transportStats(): Pair<Long, Long> {
-        val s = nativeTransportStats(handle)
-        return s[0] to s[1]
+    /** Returns (bytesIn, bytesOut); zeros once closed. */
+    fun transportStats(): Pair<Long, Long> = withHandle(0L to 0L) {
+        val s = nativeTransportStats(it)
+        s[0] to s[1]
     }
 
-    fun connectionInfo(): ConnectionInfo {
-        val r = nativeConnectionInfo(handle)
-        return ConnectionInfo(r[0], r[1], r[2], r[3], r[4], r[5], r[6])
+    fun connectionInfo(): ConnectionInfo? = withHandle(null) {
+        val r = nativeConnectionInfo(it)
+        ConnectionInfo(r[0], r[1], r[2], r[3], r[4], r[5], r[6])
     }
 
-    override fun close() {
+    override fun close() = synchronized(lock) {
         if (handle != 0L) {
             nativeDestroy(handle)
             handle = 0L
