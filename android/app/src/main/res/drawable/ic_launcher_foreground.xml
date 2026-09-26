@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tunnel arch with a keyhole: the tunnel only opens with the right key. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M34,76V54a20,20 0,0 1,40 0V76"
+        android:strokeWidth="7"
+        android:strokeColor="#E3A93B"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M42.5,76V54.5a11.5,11.5 0,0 1,23 0V76"
+        android:strokeWidth="2.5"
+        android:strokeColor="#5A6B7D"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+    <path
+        android:fillColor="#F5F3EE"
+        android:pathData="M54,52.5a4.5,4.5 0,0 1,2.4 8.3L57.6,68H50.4L51.6,60.8A4.5,4.5 0,0 1,54 52.5Z" />
+</vector>

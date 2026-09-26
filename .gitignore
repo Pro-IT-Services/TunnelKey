@@ -1,0 +1,8 @@
+.claude/
+.DS_Store
+*.log
+android/build-log.txt
+server/devdata/
+server/data/
+server/tunnelkey-server
+server/tunnelkey-server.exe

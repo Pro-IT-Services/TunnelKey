@@ -1,0 +1,401 @@
+package app.tunnelkey.ui
+
+import android.Manifest
+import android.app.Activity
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.net.VpnService
+import android.os.Build
+import android.os.Bundle
+import android.os.SystemClock
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import app.tunnelkey.R
+import app.tunnelkey.data.Profile
+import app.tunnelkey.managed.ManagedLink
+import app.tunnelkey.ovpn3.OpenVpnClient
+import app.tunnelkey.security.Biometrics
+import app.tunnelkey.security.LockMethod
+import app.tunnelkey.ui.screens.EditorScreen
+import app.tunnelkey.ui.screens.HomeScreen
+import app.tunnelkey.ui.screens.LockScreen
+import app.tunnelkey.ui.screens.LockSetupScreen
+import app.tunnelkey.ui.screens.LogScreen
+import app.tunnelkey.ui.screens.ManagedHomeScreen
+import app.tunnelkey.ui.screens.PinCreateScreen
+import app.tunnelkey.ui.screens.ScanScreen
+import app.tunnelkey.ui.screens.SecurityScreen
+import app.tunnelkey.ui.screens.SignInSheet
+import app.tunnelkey.ui.theme.TunnelkeyTheme
+import kotlinx.coroutines.launch
+
+class MainActivity : FragmentActivity() {
+
+    private val vm: MainViewModel by viewModels()
+    private var stoppedAt = 0L
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        if (savedInstanceState == null) handleIncoming(intent)
+        setContent { TunnelkeyTheme { App(vm) } }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Re-lock after the app has been in the background for a while.
+        if (stoppedAt != 0L && SystemClock.elapsedRealtime() - stoppedAt > LOCK_AFTER_MS) vm.managed.lock()
+        vm.managed.unlockIfUnprotected()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        stoppedAt = SystemClock.elapsedRealtime()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIncoming(intent)
+    }
+
+    /** "Open with Tunnelkey" or share sheet with an .ovpn file (normal mode only). */
+    private fun handleIncoming(intent: Intent?) {
+        if (vm.managed.isActive) return
+        val uri: Uri? = when (intent?.action) {
+            Intent.ACTION_VIEW -> intent.data
+            Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            else -> null
+        }
+        if (uri != null) vm.import(uri)
+    }
+
+    private companion object {
+        const val LOCK_AFTER_MS = 30_000L
+    }
+}
+
+private object Routes {
+    const val HOME = "home"
+    const val EDITOR = "editor"
+    const val LOGS = "logs"
+    const val SCAN = "scan"
+    const val SETUP = "setup"
+    const val SETUP_PIN = "setup-pin"
+    const val SECURITY = "security"
+    const val CHANGE_PIN = "change-pin"
+}
+
+@Composable
+private fun App(vm: MainViewModel) {
+    val nav = rememberNavController()
+    val context = LocalContext.current
+    val activity = context as FragmentActivity
+    val scope = rememberCoroutineScope()
+    val profiles by vm.profiles.collectAsStateWithLifecycle()
+    val status by vm.status.collectAsStateWithLifecycle()
+    val selectedId by vm.selectedId.collectAsStateWithLifecycle()
+    val signIn by vm.signIn.collectAsStateWithLifecycle()
+    val form by vm.form.collectAsStateWithLifecycle()
+    val log by vm.log.collectAsStateWithLifecycle()
+    val managedConfig by vm.managedConfig.collectAsStateWithLifecycle()
+    val unlocked by vm.unlocked.collectAsStateWithLifecycle()
+    val hint by vm.hint.collectAsStateWithLifecycle()
+
+    val selected = profiles.firstOrNull { it.id == selectedId } ?: profiles.firstOrNull()
+    var error by remember { mutableStateOf<Pair<Int, String>?>(null) }
+    var showAbout by remember { mutableStateOf(false) }
+    var pendingConnect by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var missingApp by remember { mutableStateOf<ManagedLink?>(null) }
+    var lockMessage by remember { mutableStateOf<String?>(null) }
+    var lockMethod by remember { mutableStateOf(vm.managed.lockMethod) }
+
+    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) vm.import(uri)
+    }
+    val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val action = pendingConnect
+        pendingConnect = null
+        if (result.resultCode == Activity.RESULT_OK && action != null) action()
+        else if (action != null) error = R.string.status_failed to context.getString(R.string.error_vpn_permission)
+    }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
+    /** Runs [action] once VPN consent (and, best effort, notification permission) is in place. */
+    fun withVpnPermission(action: () -> Unit) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        val consent = VpnService.prepare(context)
+        if (consent != null) {
+            pendingConnect = action
+            vpnConsent.launch(consent)
+        } else {
+            action()
+        }
+    }
+
+    fun openLink(link: ManagedLink) {
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link.uri)))
+        } catch (e: ActivityNotFoundException) {
+            missingApp = link
+        }
+    }
+
+    fun unlockWithBiometric() {
+        val cipher = vm.managed.vault.biometricDecryptCipher()
+        if (cipher == null) {
+            lockMessage = context.getString(R.string.lock_biometric_changed)
+            vm.removeManaged()
+            return
+        }
+        scope.launch {
+            val r = Biometrics.authenticate(
+                activity, cipher,
+                title = context.getString(R.string.lock_unlock),
+                subtitle = context.getString(R.string.biometric_unlock_subtitle, managedConfig?.name.orEmpty()),
+                negative = context.getString(R.string.action_cancel),
+            )
+            when (r) {
+                is Biometrics.Result.Success -> runCatching { vm.managed.unlockWithBiometric(r.cipher) }
+                    .onFailure { lockMessage = it.message }
+                is Biometrics.Result.Error -> lockMessage = r.message
+                Biometrics.Result.Cancelled -> Unit
+            }
+        }
+    }
+
+    /** Asks for a biometric confirmation that produces a key for storing secrets. */
+    fun enrolBiometric(name: String, onCipher: (javax.crypto.Cipher) -> Unit) {
+        scope.launch {
+            val r = Biometrics.authenticate(
+                activity, vm.managed.vault.biometricEncryptCipher(),
+                title = context.getString(R.string.biometric_setup_title),
+                subtitle = context.getString(R.string.biometric_setup_subtitle, name),
+                negative = context.getString(R.string.action_cancel),
+            )
+            when (r) {
+                is Biometrics.Result.Success -> onCipher(r.cipher)
+                is Biometrics.Result.Error -> error = R.string.status_failed to r.message
+                Biometrics.Result.Cancelled -> Unit
+            }
+        }
+    }
+
+    fun NavHostController.goHome() = navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } }
+
+    LaunchedEffect(Unit) {
+        vm.events.collect { e ->
+            when (e) {
+                UiEvent.OpenEditor -> nav.navigate(Routes.EDITOR) { launchSingleTop = true }
+                is UiEvent.Error -> error = R.string.error_import to e.message
+                is UiEvent.OpenLink -> openLink(e.link)
+            }
+        }
+    }
+
+    // ---- Lock gate: nothing of a protected configuration is visible while locked.
+    val cfg = managedConfig
+    if (cfg != null && lockMethod != LockMethod.None && unlocked == null) {
+        LockScreen(
+            name = cfg.name,
+            usesPin = lockMethod == LockMethod.Pin,
+            onBiometric = ::unlockWithBiometric,
+            onPin = { pin -> vm.managed.unlockWithPin(pin) },
+            lockedUntil = vm.managed.vault.lockedUntil,
+            message = lockMessage,
+        )
+        return
+    }
+
+    NavHost(navController = nav, startDestination = Routes.HOME) {
+        composable(Routes.HOME) {
+            if (cfg != null) {
+                ManagedHomeScreen(
+                    config = cfg,
+                    status = status,
+                    hint = hint,
+                    onConnect = { withVpnPermission { vm.connectManaged() } },
+                    onDisconnect = vm::disconnect,
+                    onOpenLink = { link ->
+                        if (status.phase == app.tunnelkey.vpn.Phase.Connected) vm.openLink(link)
+                        else withVpnPermission { vm.openLink(link) }
+                    },
+                    onOpenLogs = { nav.navigate(Routes.LOGS) },
+                    onSecurity = { nav.navigate(Routes.SECURITY) },
+                    onRemove = { vm.removeManaged(); lockMethod = LockMethod.None },
+                )
+            } else {
+                HomeScreen(
+                    profiles = profiles,
+                    selected = selected,
+                    status = status,
+                    onSelect = { vm.select(it.id) },
+                    onEdit = { vm.edit(it); nav.navigate(Routes.EDITOR) },
+                    onImport = { filePicker.launch(arrayOf("*/*")) },
+                    onScan = { nav.navigate(Routes.SCAN) },
+                    onConnect = { p: Profile -> withVpnPermission { vm.requestConnect(p) } },
+                    onDisconnect = vm::disconnect,
+                    onOpenLogs = { nav.navigate(Routes.LOGS) },
+                    onAbout = { showAbout = true },
+                )
+            }
+        }
+        composable(Routes.EDITOR) {
+            EditorScreen(
+                form = form,
+                onChange = vm::updateForm,
+                onSave = { vm.saveForm { nav.popBackStack(Routes.HOME, false) } },
+                onDelete = { vm.delete(form.id) { nav.popBackStack(Routes.HOME, false) } },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.LOGS) {
+            LogScreen(lines = log, onClear = vm::clearLog, onBack = { nav.popBackStack() })
+        }
+        composable(Routes.SCAN) {
+            ScanScreen(
+                onScanned = { payload ->
+                    vm.pendingSetup = payload
+                    nav.navigate(Routes.SETUP) { popUpTo(Routes.SCAN) { inclusive = true } }
+                },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.SETUP) {
+            val payload = vm.pendingSetup
+            if (payload == null) {
+                LaunchedEffect(Unit) { nav.goHome() }
+                return@composable
+            }
+            LockSetupScreen(
+                payload = payload,
+                biometricAvailable = Biometrics.available(context),
+                replacesExisting = cfg != null,
+                onBiometric = {
+                    enrolBiometric(payload.name) { cipher ->
+                        vm.installWithBiometric(cipher) { lockMethod = LockMethod.Biometric; nav.goHome() }
+                    }
+                },
+                onPin = { nav.navigate(Routes.SETUP_PIN) },
+                onNoLock = { vm.installUnprotected { lockMethod = LockMethod.None; nav.goHome() } },
+                onBack = { vm.pendingSetup = null; nav.popBackStack() },
+            )
+        }
+        composable(Routes.SETUP_PIN) {
+            PinCreateScreen(
+                onDone = { pin -> vm.installWithPin(pin) { lockMethod = LockMethod.Pin; nav.goHome() } },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.SECURITY) {
+            val c = managedConfig
+            SecurityScreen(
+                method = lockMethod,
+                lockRequired = c?.lockRequired == true,
+                biometricAvailable = Biometrics.available(context),
+                onUseBiometric = {
+                    enrolBiometric(c?.name.orEmpty()) { cipher ->
+                        vm.managed.changeToBiometric(cipher)
+                        lockMethod = LockMethod.Biometric
+                    }
+                },
+                onUsePin = { nav.navigate(Routes.CHANGE_PIN) },
+                onBack = { nav.popBackStack() },
+            )
+        }
+        composable(Routes.CHANGE_PIN) {
+            PinCreateScreen(
+                onDone = { pin ->
+                    scope.launch {
+                        vm.managed.changeToPin(pin)
+                        lockMethod = LockMethod.Pin
+                        nav.popBackStack()
+                    }
+                },
+                onBack = { nav.popBackStack() },
+            )
+        }
+    }
+
+    signIn?.let { request ->
+        SignInSheet(request = request, onSubmit = vm::submitSignIn, onDismiss = vm::dismissSignIn)
+    }
+
+    error?.let { (title, message) ->
+        AlertDialog(
+            onDismissRequest = { error = null },
+            title = { Text(stringResource(title)) },
+            text = { Text(message) },
+            confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } },
+        )
+    }
+
+    missingApp?.let { link ->
+        AlertDialog(
+            onDismissRequest = { missingApp = null },
+            title = { Text(link.title) },
+            text = { Text(stringResource(R.string.link_no_app, link.title)) },
+            confirmButton = {
+                if (link.kind == "rdp") {
+                    TextButton(onClick = {
+                        missingApp = null
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$RDP_PACKAGE")))
+                        }.onFailure {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$RDP_PACKAGE")))
+                        }
+                    }) { Text(stringResource(R.string.link_get_rdp_app)) }
+                } else {
+                    TextButton(onClick = { missingApp = null }) { Text("OK") }
+                }
+            },
+            dismissButton = if (link.kind == "rdp") {
+                { TextButton(onClick = { missingApp = null }) { Text(stringResource(R.string.action_cancel)) } }
+            } else null,
+        )
+    }
+
+    if (showAbout) AboutDialog { showAbout = false }
+}
+
+/** Microsoft's Windows App (formerly Remote Desktop) for Android. */
+private const val RDP_PACKAGE = "com.microsoft.rdc.androidx"
+
+@Composable
+private fun AboutDialog(onDismiss: () -> Unit) {
+    val core = remember { runCatching { OpenVpnClient.coreVersion }.getOrDefault("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.app_name)) },
+        text = { Text(stringResource(R.string.about_body, core)) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+    )
+}

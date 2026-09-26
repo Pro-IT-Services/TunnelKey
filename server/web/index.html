@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Tunnelkey Provisioning</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+  <script src="app.js" type="module"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/">
+      <svg class="mark" viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M11 41V23a13 13 0 0 1 26 0v18" class="mark-outer"/>
+        <path d="M17.5 41V23.5a6.5 6.5 0 0 1 13 0V41" class="mark-inner"/>
+        <path d="M24 21.5a3 3 0 0 1 1.6 5.5l.9 5.5h-5l.9-5.5a3 3 0 0 1 1.6-5.5z" class="mark-key"/>
+      </svg>
+      <span class="brand-name">Tunnelkey</span>
+      <span class="brand-sub">Provisioning</span>
+    </a>
+    <div class="session" id="session" hidden>
+      <span id="session-user"></span>
+      <button class="btn ghost small" id="logout" type="button">Sign out</button>
+    </div>
+  </header>
+  <main id="app" aria-live="polite"></main>
+</body>
+</html>
