@@ -20,13 +20,19 @@ import (
 var webFS embed.FS
 
 func main() {
-	if len(os.Args) >= 2 && os.Args[1] == "admin" {
-		adminCommand(os.Args[2:])
-		return
+	if len(os.Args) >= 2 {
+		switch os.Args[1] {
+		case "admin":
+			adminCommand(os.Args[2:])
+			return
+		case "healthcheck":
+			healthcheckCommand()
+			return
+		}
 	}
 
-	listen := flag.String("listen", "127.0.0.1:8080", "address to listen on")
-	dataDir := flag.String("data", "data", "directory for the database and encryption key")
+	listen := flag.String("listen", envOr("TUNNELKEY_LISTEN", "127.0.0.1:8080"), "address to listen on (env TUNNELKEY_LISTEN)")
+	dataDir := flag.String("data", envOr("TUNNELKEY_DATA", "data"), "directory for the database and encryption key (env TUNNELKEY_DATA)")
 	flag.Parse()
 
 	store, err := openStore(*dataDir)
@@ -46,6 +52,27 @@ func main() {
 	}
 	log.Printf("Tunnelkey server listening on http://%s (data in %s)", *listen, *dataDir)
 	log.Fatal(httpServer.ListenAndServe())
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// healthcheckCommand exits 0 when the local server answers /healthz. Used by
+// the Docker HEALTHCHECK (the runtime image has no curl/wget).
+func healthcheckCommand() {
+	addr := envOr("TUNNELKEY_LISTEN", "127.0.0.1:8080")
+	if strings.HasPrefix(addr, ":") || strings.HasPrefix(addr, "0.0.0.0:") {
+		addr = "127.0.0.1:" + addr[strings.LastIndex(addr, ":")+1:]
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get("http://" + addr + "/healthz")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		os.Exit(1)
+	}
 }
 
 // bootstrapAdmin creates the first admin from TUNNELKEY_ADMIN_USER /
@@ -74,7 +101,7 @@ func bootstrapAdmin(store *Store) {
 // Creates the admin or resets its password. The password is read from stdin.
 func adminCommand(args []string) {
 	fset := flag.NewFlagSet("admin", flag.ExitOnError)
-	dataDir := fset.String("data", "data", "directory for the database and encryption key")
+	dataDir := fset.String("data", envOr("TUNNELKEY_DATA", "data"), "directory for the database and encryption key")
 	fset.Parse(args)
 	if fset.NArg() != 1 {
 		fmt.Fprintln(os.Stderr, "usage: tunnelkey-server admin [-data dir] <username>")

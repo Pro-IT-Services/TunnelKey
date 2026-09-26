@@ -45,6 +45,35 @@ fresh one if the current code is about to expire.
 
 ## Provisioning server
 
+### Docker (recommended)
+
+Needs Docker with the Compose plugin and SSH access to the repository.
+
+```bash
+git clone git@github.com:kalipsers/TunnelKey.git /opt/tunnelkey
+cd /opt/tunnelkey
+cp .env.example .env          # set TUNNELKEY_ADMIN_USER / TUNNELKEY_ADMIN_PASSWORD
+./deploy.sh
+```
+
+The admin UI listens on port **9897**. To update later just run
+`/opt/tunnelkey/deploy.sh` again: it syncs the checkout with `origin/main`,
+rebuilds the image, restarts the container, waits for the health check and
+removes old images. It refuses to overwrite local changes unless you pass
+`--force`; `-b <branch>` deploys another branch, `--no-pull` redeploys the
+current checkout, `-h` lists all options.
+
+- Data (SQLite database + `secret.key`) lives in the `tunnelkey_tunnelkey-data`
+  volume — back it up as a whole.
+- Create or reset an admin at any time:
+  `docker exec -i tunnelkey-server tunnelkey-server admin <username>`
+  (type the password, then Enter).
+- The container runs read-only, as a non-root user, without capabilities.
+- Set `TUNNELKEY_BIND=127.0.0.1` in `.env` and put a TLS reverse proxy in front
+  (it must send `X-Forwarded-Proto: https`) for anything beyond a trusted LAN.
+
+### Without Docker
+
 ```bash
 cd server
 go build -o tunnelkey-server .

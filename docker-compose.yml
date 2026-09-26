@@ -1,0 +1,34 @@
+# Tunnelkey provisioning server.
+#   First start:  cp .env.example .env  (set the admin), then ./deploy.sh
+#   Admin UI:     http://<host>:9897
+name: tunnelkey
+
+services:
+  server:
+    build:
+      context: ./server
+    image: tunnelkey-server:latest
+    container_name: tunnelkey-server
+    restart: unless-stopped
+    ports:
+      - "${TUNNELKEY_BIND:-0.0.0.0}:${TUNNELKEY_PORT:-9897}:9897"
+    environment:
+      # Only used on first start, while the database has no admin yet.
+      TUNNELKEY_ADMIN_USER: ${TUNNELKEY_ADMIN_USER:-}
+      TUNNELKEY_ADMIN_PASSWORD: ${TUNNELKEY_ADMIN_PASSWORD:-}
+    volumes:
+      # Database + secret.key (encrypts every package). Back up the whole volume.
+      - tunnelkey-data:/data
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  tunnelkey-data:

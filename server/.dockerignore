@@ -1,0 +1,6 @@
+devdata/
+data/
+*.exe
+tunnelkey-server
+Dockerfile
+.dockerignore

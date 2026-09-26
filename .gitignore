@@ -6,3 +6,4 @@ server/devdata/
 server/data/
 server/tunnelkey-server
 server/tunnelkey-server.exe
+.env
