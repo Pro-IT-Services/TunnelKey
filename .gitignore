@@ -1,6 +1,6 @@
 .DS_Store
 *.log
-android/build-log.txt
+android/*-log.txt
 server/devdata/
 server/data/
 server/tunnelkey-server
