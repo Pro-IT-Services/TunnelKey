@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Tunnelkey</string>
+    <string name="app_name" translatable="false">Tunnelkey</string>
 
     <!-- Status -->
     <string name="status_disconnected">Not connected</string>
@@ -142,7 +142,10 @@
     <string name="lock_enter_pin">Enter your PIN</string>
     <string name="lock_use_biometric">Unlock with fingerprint or face</string>
     <string name="lock_unlock">Unlock</string>
-    <string name="lock_wrong_pin">Wrong PIN. %1$d attempts left before this configuration is erased.</string>
+    <plurals name="lock_wrong_pin">
+        <item quantity="one">Wrong PIN. %1$d attempt left before this configuration is erased.</item>
+        <item quantity="other">Wrong PIN. %1$d attempts left before this configuration is erased.</item>
+    </plurals>
     <string name="lock_wait">Too many attempts. Try again in %1$s.</string>
     <string name="lock_wiped">Too many wrong PINs. The configuration was erased — scan the setup code again.</string>
     <string name="lock_biometric_changed">Fingerprints or faces on this phone changed, so the saved secrets can\'t be unlocked anymore. Scan the setup code again.</string>
@@ -172,4 +175,23 @@
         <item quantity="one">%1$d link</item>
         <item quantity="other">%1$d links</item>
     </plurals>
+
+    <!-- Generic / errors -->
+    <string name="action_ok">OK</string>
+    <string name="import_too_large">This file is too large to be an OpenVPN profile.</string>
+    <string name="import_unreadable">The file could not be opened.</string>
+    <string name="import_not_profile">This doesn\'t look like an OpenVPN client profile (no “remote” found).</string>
+    <string name="setup_code_damaged">The setup code is damaged. Try scanning it again.</string>
+    <string name="setup_code_too_large">The setup code is too large.</string>
+    <string name="setup_code_newer_version">This setup code needs a newer version of Tunnelkey.</string>
+    <string name="setup_code_incomplete">The setup code is incomplete.</string>
+    <string name="pin_dots_description">%1$d of %2$d digits entered</string>
+
+    <!-- Connection steps shown while connecting -->
+    <string name="step_resolve">finding server</string>
+    <string name="step_connecting">contacting server</string>
+    <string name="step_auth">signing in</string>
+    <string name="step_get_config">getting settings</string>
+    <string name="step_assign_ip">assigning address</string>
+    <string name="step_add_routes">setting up routes</string>
 </resources>

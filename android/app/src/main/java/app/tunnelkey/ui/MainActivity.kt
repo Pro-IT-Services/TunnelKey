@@ -367,7 +367,7 @@ private fun App(vm: MainViewModel) {
             onDismissRequest = { error = null },
             title = { Text(stringResource(title)) },
             text = { Text(message) },
-            confirmButton = { TextButton(onClick = { error = null }) { Text("OK") } },
+            confirmButton = { TextButton(onClick = { error = null }) { Text(stringResource(R.string.action_ok)) } },
         )
     }
 
@@ -387,7 +387,7 @@ private fun App(vm: MainViewModel) {
                         }
                     }) { Text(stringResource(R.string.link_get_rdp_app)) }
                 } else {
-                    TextButton(onClick = { missingApp = null }) { Text("OK") }
+                    TextButton(onClick = { missingApp = null }) { Text(stringResource(R.string.action_ok)) }
                 }
             },
             dismissButton = if (link.kind == "rdp") {
@@ -413,7 +413,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = { Text("${stringResource(R.string.app_name)} $version") },
         text = { Text(stringResource(R.string.about_body, core)) },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) } },
         dismissButton = {
             TextButton(onClick = {
                 runCatching {

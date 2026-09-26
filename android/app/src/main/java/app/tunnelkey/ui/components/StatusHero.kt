@@ -99,10 +99,10 @@ fun StatusHero(status: TunnelStatus, profileName: String?, modifier: Modifier = 
             if (status.phase == Phase.Connected && since != null) {
                 Text("  ·  ", color = colors.onSurfaceVariant)
                 SessionTimer(since)
-            } else if (status.phase == Phase.Connecting && status.step.isNotEmpty()) {
+            } else if (status.phase == Phase.Connecting && stepLabel(status.step) != null) {
                 Text("  ·  ", color = colors.onSurfaceVariant)
                 Text(
-                    status.step.lowercase().replace('_', ' '),
+                    stringResource(stepLabel(status.step)!!),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant,
                 )
@@ -239,4 +239,15 @@ fun formatBytes(bytes: Long): String {
         unit++
     }
     return if (value >= 100) "%.0f %s".format(value, units[unit]) else "%.1f %s".format(value, units[unit])
+}
+
+/** Human-readable label for the OpenVPN core's connection steps; null hides the step. */
+private fun stepLabel(step: String): Int? = when (step) {
+    "RESOLVE" -> R.string.step_resolve
+    "WAIT", "CONNECTING" -> R.string.step_connecting
+    "AUTH_PENDING" -> R.string.step_auth
+    "GET_CONFIG" -> R.string.step_get_config
+    "ASSIGN_IP" -> R.string.step_assign_ip
+    "ADD_ROUTES" -> R.string.step_add_routes
+    else -> null
 }

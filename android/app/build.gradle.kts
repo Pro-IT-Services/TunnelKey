@@ -67,6 +67,7 @@ android {
                     test.systemProperty("playScreenshots", "true")
                     test.systemProperty("roborazzi.test.record", "true")
                     test.systemProperty("screenshotDir", rootProject.file("../docs/play-store/screens-raw").absolutePath)
+                    test.systemProperty("playLocale", (project.findProperty("playLocale") ?: "en-US").toString())
                 }
             }
         }

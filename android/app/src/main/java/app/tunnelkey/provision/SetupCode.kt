@@ -37,7 +37,9 @@ data class SetupPayload(
     @SerialName("l") val links: List<SetupLink> = emptyList(),
 )
 
-class SetupCodeException(message: String) : Exception(message)
+class SetupCodeException(val kind: Kind) : Exception(kind.name) {
+    enum class Kind { Damaged, TooLarge, NewerVersion, Incomplete }
+}
 
 /** One scanned QR code of a set. */
 data class SetupPart(val index: Int, val total: Int, val id: String, val data: String) {
@@ -80,7 +82,7 @@ class SetupCodeAssembler {
     }
 
     fun payload(): SetupPayload {
-        if (!isComplete) throw SetupCodeException("Not all parts scanned yet")
+        if (!isComplete) throw SetupCodeException(SetupCodeException.Kind.Incomplete)
         return SetupCodes.decode(parts.values.joinToString(""))
     }
 }
@@ -96,15 +98,15 @@ object SetupCodes {
         val payload = try {
             json.decodeFromString<SetupPayload>(raw.toString(Charsets.UTF_8))
         } catch (e: Exception) {
-            throw SetupCodeException("The setup code is damaged.")
+            throw SetupCodeException(SetupCodeException.Kind.Damaged)
         }
-        if (payload.version != 1) throw SetupCodeException("This setup code needs a newer version of Tunnelkey.")
-        if (payload.name.isBlank() || payload.ovpn.isBlank()) throw SetupCodeException("The setup code is incomplete.")
+        if (payload.version != 1) throw SetupCodeException(SetupCodeException.Kind.NewerVersion)
+        if (payload.name.isBlank() || payload.ovpn.isBlank()) throw SetupCodeException(SetupCodeException.Kind.Incomplete)
         return payload
     }
 
     fun base45Decode(s: String): ByteArray {
-        if (s.length % 3 == 1) throw SetupCodeException("Invalid setup code length")
+        if (s.length % 3 == 1) throw SetupCodeException(SetupCodeException.Kind.Damaged)
         val out = ByteArrayOutputStream(s.length * 2 / 3)
         var i = 0
         while (i < s.length) {
@@ -112,12 +114,12 @@ object SetupCodes {
             val c1 = value(s[i + 1])
             if (i + 2 < s.length) {
                 val v = c0 + c1 * 45 + value(s[i + 2]) * 2025
-                if (v > 0xFFFF) throw SetupCodeException("Invalid setup code")
+                if (v > 0xFFFF) throw SetupCodeException(SetupCodeException.Kind.Damaged)
                 out.write(v shr 8)
                 out.write(v and 0xFF)
             } else {
                 val v = c0 + c1 * 45
-                if (v > 0xFF) throw SetupCodeException("Invalid setup code")
+                if (v > 0xFF) throw SetupCodeException(SetupCodeException.Kind.Damaged)
                 out.write(v)
             }
             i += 3
@@ -127,7 +129,7 @@ object SetupCodes {
 
     private fun value(c: Char): Int {
         val v = ALPHABET.indexOf(c)
-        if (v < 0) throw SetupCodeException("Invalid character in setup code")
+        if (v < 0) throw SetupCodeException(SetupCodeException.Kind.Damaged)
         return v
     }
 
@@ -141,14 +143,14 @@ object SetupCodes {
             while (!inflater.finished()) {
                 val n = inflater.inflate(buf)
                 if (n == 0 && (inflater.needsInput() || inflater.needsDictionary())) {
-                    throw SetupCodeException("The setup code is damaged.")
+                    throw SetupCodeException(SetupCodeException.Kind.Damaged)
                 }
                 out.write(buf, 0, n)
-                if (out.size() > MAX_INFLATED) throw SetupCodeException("The setup code is too large.")
+                if (out.size() > MAX_INFLATED) throw SetupCodeException(SetupCodeException.Kind.TooLarge)
             }
             return out.toByteArray()
         } catch (e: java.util.zip.DataFormatException) {
-            throw SetupCodeException("The setup code is damaged.")
+            throw SetupCodeException(SetupCodeException.Kind.Damaged)
         } finally {
             inflater.end()
         }

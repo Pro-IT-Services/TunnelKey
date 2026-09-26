@@ -155,7 +155,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             _events.send(UiEvent.OpenEditor)
         } catch (e: ImportException) {
-            _events.send(UiEvent.Error("import", e.message.orEmpty()))
+            _events.send(UiEvent.Error("import", getApplication<Application>().getString(e.messageRes)))
         } catch (e: Exception) {
             _events.send(UiEvent.Error("import", e.message ?: e.javaClass.simpleName))
         }

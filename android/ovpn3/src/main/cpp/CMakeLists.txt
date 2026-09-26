@@ -11,6 +11,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Reproducible builds
 add_link_options("LINKER:--build-id=none")
+# 16 KB memory pages (required by Google Play for Android 15+ targets).
+add_link_options("LINKER:-z,max-page-size=16384")
 
 include(FetchContent)
 if(POLICY CMP0169)

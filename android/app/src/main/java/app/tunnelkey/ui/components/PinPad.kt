@@ -46,10 +46,11 @@ fun PinDots(length: Int, filled: Int, errorKey: Int, error: Boolean) {
         for (x in listOf(-14f, 12f, -9f, 6f, -3f, 0f)) shake.animateTo(x, spring(stiffness = Spring.StiffnessHigh))
     }
     val colors = MaterialTheme.colorScheme
+    val description = stringResource(R.string.pin_dots_description, filled, length)
     Row(
         Modifier
             .offset { IntOffset(shake.value.dp.roundToPx(), 0) }
-            .semantics { contentDescription = "$filled of $length digits entered" },
+            .semantics { contentDescription = description },
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         repeat(length) { i ->

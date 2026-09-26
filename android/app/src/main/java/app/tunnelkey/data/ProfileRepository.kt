@@ -3,6 +3,7 @@ package app.tunnelkey.data
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import app.tunnelkey.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,7 +20,8 @@ data class ImportDraft(
     val summary: OvpnSummary,
 )
 
-class ImportException(message: String) : Exception(message)
+/** [messageRes] is a user-facing string resource. */
+class ImportException(@androidx.annotation.StringRes val messageRes: Int) : Exception()
 
 /**
  * Profiles live in app-private storage: one `<id>.ovpn` per profile plus a
@@ -46,13 +48,13 @@ class ProfileRepository(private val context: Context, private val secrets: Secre
 
         val bytes = resolver.openInputStream(uri)?.use { input ->
             val buffer = input.readNBytesCompat(OvpnInspector.MAX_PROFILE_BYTES + 1)
-            if (buffer.size > OvpnInspector.MAX_PROFILE_BYTES) throw ImportException("This file is too large to be an OpenVPN profile.")
+            if (buffer.size > OvpnInspector.MAX_PROFILE_BYTES) throw ImportException(R.string.import_too_large)
             buffer
-        } ?: throw ImportException("The file could not be opened.")
+        } ?: throw ImportException(R.string.import_unreadable)
 
-        val content = String(bytes, Charsets.UTF_8).removePrefix("﻿")
+        val content = String(bytes, Charsets.UTF_8).removePrefix(Char(0xFEFF).toString()) // byte-order mark
         val summary = OvpnInspector.inspect(content)
-        if (!summary.isValid) throw ImportException("This doesn't look like an OpenVPN client profile (no “remote” found).")
+        if (!summary.isValid) throw ImportException(R.string.import_not_profile)
         ImportDraft(name.substringBeforeLast('.').ifBlank { "Profile" }, content, summary)
     }
 

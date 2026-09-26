@@ -282,7 +282,7 @@ fun LockScreen(
                     when (val r = onPin(pin)) {
                         is PinResult.Unlocked -> Unit
                         is PinResult.Wrong -> {
-                            error = context.getString(R.string.lock_wrong_pin, r.attemptsLeft)
+                            error = context.resources.getQuantityString(R.plurals.lock_wrong_pin, r.attemptsLeft, r.attemptsLeft)
                             until = r.lockedUntil
                             errorKey++
                         }

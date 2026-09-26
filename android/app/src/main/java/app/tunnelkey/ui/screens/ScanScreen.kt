@@ -110,7 +110,14 @@ fun ScanScreen(onScanned: (SetupPayload) -> Unit, onBack: () -> Unit) {
             try {
                 onScanned(assembler.payload())
             } catch (e: SetupCodeException) {
-                message = e.message
+                message = context.getString(
+                    when (e.kind) {
+                        SetupCodeException.Kind.Damaged -> R.string.setup_code_damaged
+                        SetupCodeException.Kind.TooLarge -> R.string.setup_code_too_large
+                        SetupCodeException.Kind.NewerVersion -> R.string.setup_code_newer_version
+                        SetupCodeException.Kind.Incomplete -> R.string.setup_code_incomplete
+                    },
+                )
                 messageKey++
             }
         }

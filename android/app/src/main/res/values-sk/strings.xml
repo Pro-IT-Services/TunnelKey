@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Slovenčina. Used when the phone (or the app's language setting) is Slovak. -->
+<resources>
+    <!-- Status -->
+    <string name="status_disconnected">Nepripojené</string>
+    <string name="status_connecting">Pripája sa…</string>
+    <string name="status_connected">Chránené</string>
+    <string name="status_reconnecting">Znova sa pripája…</string>
+    <string name="status_disconnecting">Odpája sa…</string>
+    <string name="status_failed">Pripojenie zlyhalo</string>
+
+    <!-- Actions -->
+    <string name="action_connect">Pripojiť</string>
+    <string name="action_disconnect">Odpojiť</string>
+    <string name="action_cancel">Zrušiť</string>
+    <string name="action_import">Importovať profil</string>
+    <string name="action_save">Uložiť profil</string>
+    <string name="action_delete">Vymazať profil</string>
+    <string name="action_edit">Upraviť profil</string>
+    <string name="action_logs">Záznam pripojenia</string>
+    <string name="action_about">O aplikácii</string>
+    <string name="action_paste">Vložiť kód</string>
+    <string name="action_copy">Kopírovať</string>
+    <string name="action_clear">Vymazať</string>
+    <string name="action_back">Späť</string>
+    <string name="action_show_password">Zobraziť heslo</string>
+    <string name="action_hide_password">Skryť heslo</string>
+
+    <!-- Home -->
+    <string name="profiles_header">Profily</string>
+    <string name="empty_title">Zatiaľ žiadne profily</string>
+    <string name="empty_body">Na začiatok importujte súbor .ovpn od svojho poskytovateľa VPN alebo správcu.</string>
+    <string name="badge_2fa">2FA</string>
+    <string name="label_server">Server</string>
+    <string name="label_address">VPN adresa</string>
+    <string name="label_down">Prijaté</string>
+    <string name="label_up">Odoslané</string>
+
+    <!-- Sign-in sheet -->
+    <string name="signin_title">Prihlásenie do %1$s</string>
+    <string name="signin_user">Prihlásený ako %1$s</string>
+    <string name="field_password">Heslo</string>
+    <string name="field_code">Overovací kód</string>
+    <string name="signin_code_hint">Zadajte %1$d-miestny kód z overovacej aplikácie.</string>
+    <string name="signin_sent_as">Na server sa odošle ako</string>
+    <string name="signin_static_challenge">Tento profil používa výzvu OpenVPN (challenge), preto sa kód posiela oddelene od hesla.</string>
+
+    <!-- Editor -->
+    <string name="editor_title_new">Nový profil</string>
+    <string name="editor_title_edit">Upraviť profil</string>
+    <string name="field_name">Názov</string>
+    <string name="field_username">Používateľské meno</string>
+    <string name="section_2fa">Dvojfaktorové overenie</string>
+    <string name="toggle_2fa">Server vyžaduje overovací kód</string>
+    <string name="toggle_2fa_body">Kód sa spojí s vaším heslom a odošle ako jedno heslo, tak ako to očakávajú OpenVPN servery s TOTP pluginom.</string>
+    <string name="code_position">Umiestnenie kódu</string>
+    <string name="code_after">Za heslom</string>
+    <string name="code_before">Pred heslom</string>
+    <string name="code_length">Dĺžka kódu</string>
+    <string name="code_length_value">%1$d číslic</string>
+    <string name="section_password">Heslo</string>
+    <string name="toggle_remember">Zapamätať heslo v tomto zariadení</string>
+    <string name="toggle_remember_body">Šifrované kľúčom uloženým v Android Keystore. Overovacie kódy sa nikdy neukladajú.</string>
+    <string name="password_saved_hint">Nechajte prázdne, ak chcete ponechať uložené heslo</string>
+    <string name="profile_no_auth">Tento profil sa prihlasuje iba certifikátom, heslo nie je potrebné.</string>
+    <string name="warning_external_files">Tento profil odkazuje na súbory, ktoré nie sú jeho súčasťou: %1$s. Vyžiadajte si profil s vloženými (inline) certifikátmi.</string>
+    <string name="warning_static_challenge">Profil obsahuje statickú výzvu („%1$s“). Dvojfaktorové overenie sme zapli za vás; kód sa odošle ako odpoveď na výzvu.</string>
+    <string name="delete_confirm_title">Vymazať „%1$s“?</string>
+    <string name="delete_confirm_body">Profil aj uložené heslo sa z tohto zariadenia odstránia.</string>
+
+    <!-- Logs -->
+    <string name="logs_empty">Zatiaľ nič. Pripojte sa k profilu a uvidíte, čo sa deje.</string>
+
+    <!-- About -->
+    <string name="about_body">Open-source OpenVPN klient s podporou overovacích kódov od ProIT services.\n\nŽiadna analytika, reklamy ani účty: profily, heslá a 2FA tajomstvá zostávajú v tomto telefóne.\n\nLicencia GNU AGPL v3. Postavené na jadre OpenVPN 3, mbed TLS, asio, fmt a LZ4.\n\n%1$s</string>
+    <string name="action_privacy">Zásady ochrany súkromia</string>
+
+    <!-- Errors -->
+    <string name="error_import">Profil sa nepodarilo importovať</string>
+    <string name="error_auth_failed">Server odmietol vaše meno alebo heslo.</string>
+    <string name="error_auth_failed_2fa">Server odmietol prihlásenie. Overovacie kódy platia 30 sekúnd — skúste to znova s novým kódom.</string>
+    <string name="error_need_creds">Pripojenie sa prerušilo a server vyžaduje nové prihlásenie.</string>
+    <string name="error_need_creds_2fa">Pripojenie sa prerušilo a server vyžaduje nové prihlásenie s novým overovacím kódom.</string>
+    <string name="error_code_missing">Je potrebný overovací kód.</string>
+    <string name="error_revoked">Pripojenie prevzala iná VPN alebo bolo odobraté povolenie pre VPN.</string>
+    <string name="error_always_on_unsupported">Tunnelkey nemôže bežať ako trvalá VPN, pretože každé pripojenie vyžaduje nový kód. Pripojte sa v aplikácii.</string>
+    <string name="error_vpn_permission">Na pripojenie je potrebné povolenie pre VPN.</string>
+
+    <!-- Notification -->
+    <string name="notification_channel">VPN pripojenie</string>
+    <string name="notification_connected">VPN pripojená</string>
+    <string name="notification_connecting">Pripája sa VPN…</string>
+
+    <!-- Setup codes -->
+    <string name="action_scan">Naskenovať kód nastavenia</string>
+    <string name="scan_title">Naskenovať kód nastavenia</string>
+    <string name="scan_hint">Namierte fotoaparát na QR kód od vášho správcu.</string>
+    <string name="scan_progress">Naskenované kódy: %1$d z %2$d — naskenujte aj ostatné</string>
+    <string name="scan_camera_needed">Na naskenovanie kódu nastavenia je potrebný prístup k fotoaparátu.</string>
+    <string name="scan_allow_camera">Povoliť fotoaparát</string>
+    <string name="scan_not_setup_code">Tento QR kód nie je kód nastavenia Tunnelkey.</string>
+    <string name="scan_part_label">Časť %1$d</string>
+
+    <!-- Lock setup -->
+    <string name="setup_title">Zabezpečiť %1$s</string>
+    <string name="setup_contains">Tento kód nastavenia obsahuje:</string>
+    <string name="setup_item_vpn">VPN profil</string>
+    <string name="setup_item_password">Uložené heslo</string>
+    <string name="setup_item_totp">2FA tajomstvo — kódy sa generujú v tomto telefóne</string>
+    <string name="setup_lock_required">Keďže obsahuje tajné údaje, aplikácia musí byť zamknutá.</string>
+    <string name="setup_lock_optional">Aplikáciu môžete zamknúť, aby sa mohli pripojiť len vy.</string>
+    <string name="setup_use_biometric">Použiť odtlačok prsta alebo tvár</string>
+    <string name="setup_use_biometric_body">Odomykanie biometrikou nastavenou v tomto telefóne.</string>
+    <string name="setup_use_pin">Použiť 8-miestny PIN</string>
+    <string name="setup_use_pin_body">Ak nechcete používať biometriku.</string>
+    <string name="setup_no_lock">Nezamykať</string>
+    <string name="setup_replace_warning">Toto nahradí konfiguráciu, ktorá je teraz v telefóne.</string>
+    <string name="biometric_setup_title">Potvrďte, že ste to vy</string>
+    <string name="biometric_setup_subtitle">Odtlačok prsta alebo tvár odomkne %1$s.</string>
+    <plurals name="setup_item_links">
+        <item quantity="one">%1$d odkaz</item>
+        <item quantity="few">%1$d odkazy</item>
+        <item quantity="many">%1$d odkazu</item>
+        <item quantity="other">%1$d odkazov</item>
+    </plurals>
+
+    <!-- PIN -->
+    <string name="pin_create_title">Zvoľte 8-miestny PIN</string>
+    <string name="pin_create_body">Vyhnite sa opakovaniam, postupnostiam a dátumom.</string>
+    <string name="pin_confirm_title">Zadajte PIN ešte raz</string>
+    <string name="pin_mismatch">PIN kódy sa nezhodujú. Začnite znova.</string>
+    <string name="pin_problem_TooFewDigits">Použite aspoň 4 rôzne číslice.</string>
+    <string name="pin_problem_RepeatedDigit">Nepoužívajte tú istú číslicu 4-krát alebo viackrát.</string>
+    <string name="pin_problem_Sequence">Vyhnite sa postupnostiam ako 1234 alebo 9876.</string>
+    <string name="pin_problem_Progression">Vyhnite sa pravidelným radom ako 13579.</string>
+    <string name="pin_problem_RepeatedBlock">Vyhnite sa opakujúcim sa blokom ako 12121212 alebo 12341234.</string>
+    <string name="pin_problem_Pairs">Vyhnite sa dvojiciam ako 11223344.</string>
+    <string name="pin_problem_Mirror">Vyhnite sa zrkadlovým PIN kódom ako 12344321.</string>
+    <string name="pin_problem_Date">Vyzerá to ako dátum. Zvoľte niečo ťažšie uhádnuteľné.</string>
+    <string name="pin_problem_Common">Tento PIN je príliš bežný.</string>
+    <string name="pin_problem_Length">PIN musí mať 8 číslic.</string>
+    <string name="action_delete_digit">Vymazať číslicu</string>
+
+    <!-- Lock screen -->
+    <string name="lock_title">Zamknuté</string>
+    <string name="lock_enter_pin">Zadajte PIN</string>
+    <string name="lock_use_biometric">Odomknúť odtlačkom prsta alebo tvárou</string>
+    <string name="lock_unlock">Odomknúť</string>
+    <plurals name="lock_wrong_pin">
+        <item quantity="one">Nesprávny PIN. Zostáva %1$d pokus, potom sa konfigurácia vymaže.</item>
+        <item quantity="few">Nesprávny PIN. Zostávajú %1$d pokusy, potom sa konfigurácia vymaže.</item>
+        <item quantity="many">Nesprávny PIN. Zostáva %1$d pokusu, potom sa konfigurácia vymaže.</item>
+        <item quantity="other">Nesprávny PIN. Zostáva %1$d pokusov, potom sa konfigurácia vymaže.</item>
+    </plurals>
+    <string name="lock_wait">Príliš veľa pokusov. Skúste to znova o %1$s.</string>
+    <string name="lock_wiped">Príliš veľa nesprávnych PIN kódov. Konfigurácia bola vymazaná — naskenujte kód nastavenia znova.</string>
+    <string name="lock_biometric_changed">Odtlačky prstov alebo tváre v tomto telefóne sa zmenili, preto uložené tajomstvá už nemožno odomknúť. Naskenujte kód nastavenia znova.</string>
+    <string name="biometric_unlock_subtitle">Odomknúť %1$s</string>
+
+    <!-- Managed home -->
+    <string name="links_header">Odkazy</string>
+    <string name="link_opens_after_connect">Pripája sa — %1$s sa otvorí po pripojení VPN.</string>
+    <string name="link_no_app">V tomto telefóne nie je aplikácia, ktorá dokáže otvoriť „%1$s“.</string>
+    <string name="link_get_rdp_app">Stiahnuť Windows App</string>
+    <string name="retry_next_code">Kód bol odmietnutý — nový pokus s ďalším kódom o %1$d s</string>
+    <string name="waiting_fresh_code">Čaká sa na nový kód…</string>
+    <string name="action_settings">Zabezpečenie</string>
+    <string name="action_remove_config">Odstrániť konfiguráciu</string>
+    <string name="remove_confirm_title">Odstrániť „%1$s“?</string>
+    <string name="remove_confirm_body">VPN profil, uložené heslo, 2FA tajomstvo a odkazy sa z telefónu vymažú. Na ďalšie použitie budete potrebovať nový kód nastavenia.</string>
+    <string name="action_remove">Odstrániť</string>
+    <string name="security_title">Zabezpečenie</string>
+    <string name="security_current_biometric">Odomyká sa odtlačkom prsta alebo tvárou</string>
+    <string name="security_current_pin">Odomyká sa 8-miestnym PIN kódom</string>
+    <string name="security_current_none">Nezamknuté</string>
+    <string name="security_switch_biometric">Prepnúť na odtlačok prsta alebo tvár</string>
+    <string name="security_switch_pin">Prepnúť na PIN</string>
+    <string name="security_change_pin">Zmeniť PIN</string>
+    <string name="security_updated">Zámok bol zmenený</string>
+
+    <!-- Generic / errors -->
+    <string name="action_ok">OK</string>
+    <string name="import_too_large">Súbor je príliš veľký na to, aby bol OpenVPN profilom.</string>
+    <string name="import_unreadable">Súbor sa nepodarilo otvoriť.</string>
+    <string name="import_not_profile">Nevyzerá to ako klientsky OpenVPN profil (chýba „remote“).</string>
+    <string name="setup_code_damaged">Kód nastavenia je poškodený. Skúste ho naskenovať znova.</string>
+    <string name="setup_code_too_large">Kód nastavenia je príliš veľký.</string>
+    <string name="setup_code_newer_version">Tento kód nastavenia vyžaduje novšiu verziu Tunnelkey.</string>
+    <string name="setup_code_incomplete">Kód nastavenia je neúplný.</string>
+    <string name="pin_dots_description">Zadané číslice: %1$d z %2$d</string>
+
+    <!-- Connection steps shown while connecting -->
+    <string name="step_resolve">hľadá sa server</string>
+    <string name="step_connecting">kontaktuje sa server</string>
+    <string name="step_auth">prihlasovanie</string>
+    <string name="step_get_config">načítavajú sa nastavenia</string>
+    <string name="step_assign_ip">prideľuje sa adresa</string>
+    <string name="step_add_routes">nastavujú sa trasy</string>
+</resources>
