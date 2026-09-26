@@ -107,7 +107,6 @@
     <string name="setup_item_vpn">VPN profile</string>
     <string name="setup_item_password">Saved password</string>
     <string name="setup_item_totp">2FA secret — codes are generated on this phone</string>
-    <string name="setup_item_links">%1$d links</string>
     <string name="setup_lock_required">Because it holds secrets, the app has to be locked.</string>
     <string name="setup_lock_optional">You can lock the app so only you can connect.</string>
     <string name="setup_use_biometric">Use fingerprint or face</string>
@@ -166,4 +165,8 @@
     <string name="security_switch_pin">Switch to a PIN</string>
     <string name="security_change_pin">Change PIN</string>
     <string name="security_updated">Lock updated</string>
+    <plurals name="setup_item_links">
+        <item quantity="one">%1$d link</item>
+        <item quantity="other">%1$d links</item>
+    </plurals>
 </resources>

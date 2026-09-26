@@ -301,7 +301,7 @@ struct SetupFlowView: View {
                 included("lock.shield", "VPN profile")
                 if !(p.password ?? "").isEmpty { included("key.horizontal", "Saved password") }
                 if p.totp != nil { included("key", "2FA secret — codes are generated on this phone") }
-                if !p.links.isEmpty { included("link", "\(p.links.count) links") }
+                if !p.links.isEmpty { included("link", p.links.count == 1 ? "1 link" : "\(p.links.count) links") }
 
                 Text(p.hasSecrets
                      ? "Because it holds secrets, the app has to be locked."

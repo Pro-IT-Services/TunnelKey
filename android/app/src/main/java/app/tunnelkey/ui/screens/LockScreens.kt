@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
@@ -95,7 +96,7 @@ fun LockSetupScreen(
         Included(Icons.Outlined.VpnKey, stringResource(R.string.setup_item_vpn))
         if (!payload.password.isNullOrEmpty()) Included(Icons.Outlined.Password, stringResource(R.string.setup_item_password))
         if (payload.totp != null) Included(Icons.Outlined.Key, stringResource(R.string.setup_item_totp))
-        if (payload.links.isNotEmpty()) Included(Icons.Outlined.Link, stringResource(R.string.setup_item_links, payload.links.size))
+        if (payload.links.isNotEmpty()) Included(Icons.Outlined.Link, pluralStringResource(R.plurals.setup_item_links, payload.links.size, payload.links.size))
 
         Spacer(Modifier.height(20.dp))
         Text(
