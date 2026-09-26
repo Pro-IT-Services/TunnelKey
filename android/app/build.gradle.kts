@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -10,15 +12,32 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "app.tunnelkey"
+        applicationId = "com.proitservices.tunnelkey"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 100
+        versionName = "1.0.0"
+    }
+
+    // Upload key for Google Play. Create keystore.properties next to this
+    // project's settings.gradle.kts (never commit it) — see docs/play-store/README.md.
+    val keystoreProps = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { f ->
+        Properties().apply { f.inputStream().use(::load) }
+    }
+    signingConfigs {
+        if (keystoreProps != null) {
+            create("release") {
+                storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+                storePassword = keystoreProps.getProperty("storePassword")
+                keyAlias = keystoreProps.getProperty("keyAlias")
+                keyPassword = keystoreProps.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -37,6 +56,20 @@ android {
 
     packaging {
         jniLibs.useLegacyPackaging = false
+    }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+            all { test ->
+                // ./gradlew :app:testDebugUnitTest -PplayScreenshots renders the store screenshots.
+                if (project.hasProperty("playScreenshots")) {
+                    test.systemProperty("playScreenshots", "true")
+                    test.systemProperty("roborazzi.test.record", "true")
+                    test.systemProperty("screenshotDir", rootProject.file("../docs/play-store/screens-raw").absolutePath)
+                }
+            }
+        }
     }
 }
 
@@ -71,4 +104,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.androidx.test.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

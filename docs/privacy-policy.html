@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tunnelkey Privacy Policy</title>
+<style>
+  :root { --bg:#0b0f14; --raised:#131a22; --line:#2a3542; --ink:#e6edf3; --muted:#93a1b0; --brass:#e3a93b; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f5f3ee; --raised:#fff; --line:#d8d3c8; --ink:#161a1f; --muted:#55606b; --brass:#8a5a00; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:16px/1.65 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.15; margin: 0 0 16px; }
+  h2 { font-size: 21px; margin: 40px 0 10px; }
+  a { color: var(--brass); }
+  p, li { color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 15px; display: block; overflow-x: auto; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+  code { font-family: ui-monospace, Consolas, monospace; font-size: .92em; }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom: 32px; color: var(--muted); font-weight:600; }
+  .brand svg { width: 32px; height: 32px; }
+</style>
+</head>
+<body>
+<main>
+<div class="brand">
+  <svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="11" fill="#0B0F14"/><path d="M11 41V23a13 13 0 0 1 26 0v18" fill="none" stroke="#E3A93B" stroke-width="4.5" stroke-linecap="round"/><path d="M17.5 41V23.5a6.5 6.5 0 0 1 13 0V41" fill="none" stroke="#5A6B7D" stroke-width="1.8" stroke-linecap="round"/><path d="M24 21.5a3 3 0 0 1 1.6 5.5l.9 5.5h-5l.9-5.5a3 3 0 0 1 1.6-5.5z" fill="#F5F3EE"/></svg>
+  Tunnelkey
+</div>
+<h1>Tunnelkey Privacy Policy</h1>
+<p><strong>Effective date:</strong> 26 September 2026
+<strong>Applies to:</strong> the Tunnelkey apps for Android and iOS, and the self-hosted Tunnelkey provisioning server software
+<strong>Publisher:</strong> ProIT services — contact: <a href="mailto:develop@pro-it.sk">develop@pro-it.sk</a></p>
+<h2>Summary</h2>
+<p>Tunnelkey is a VPN <em>client</em>. It connects your device to an OpenVPN server that
+you or your organisation operate. <strong>ProIT services does not run VPN servers and
+does not receive, collect, store or sell any data from the app.</strong> There are no
+accounts, no analytics, no advertising and no tracking.</p>
+<h2>1. Data the app processes on your device</h2>
+<p>To work, the app stores the following <strong>only on your device</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Purpose</th>
+<th>Protection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VPN profiles (<code>.ovpn</code> files, including certificates and private keys)</td>
+<td>Connecting to your VPN server</td>
+<td>App-private storage</td>
+</tr>
+<tr>
+<td>Username</td>
+<td>Signing in to your VPN server</td>
+<td>App-private storage</td>
+</tr>
+<tr>
+<td>Password (only if you choose to save it, or your administrator provisions it)</td>
+<td>Signing in to your VPN server</td>
+<td>Encrypted with a key in the Android Keystore / iOS Keychain</td>
+</tr>
+<tr>
+<td>Two-factor (TOTP) secret (only when provisioned by your administrator)</td>
+<td>Generating sign-in codes on the device</td>
+<td>Encrypted; protected by fingerprint/face or an 8-digit PIN</td>
+</tr>
+<tr>
+<td>Links added by your administrator</td>
+<td>Opening intranet sites, Remote Desktop or other apps</td>
+<td>App-private storage</td>
+</tr>
+<tr>
+<td>Connection log (connection events, server address, errors)</td>
+<td>Showing you what happened, for troubleshooting</td>
+<td>Kept in memory / app storage; shared only if <em>you</em> copy or share it</td>
+</tr>
+</tbody>
+</table>
+<p>Authenticator codes you type are used for a single sign-in and are never stored.</p>
+<p>This data is <strong>not transmitted to ProIT services or any third party</strong>. It is
+excluded from cloud backups and device transfers. You can delete it at any time
+by deleting a profile, using <em>Remove configuration</em>, or uninstalling the app.
+Entering a wrong PIN ten times erases the provisioned configuration.</p>
+<h2>2. Network traffic and the VPN</h2>
+<p>When you connect, the app uses Android's <code>VpnService</code> (or iOS's Network
+Extension) to create an encrypted OpenVPN tunnel <strong>between your device and the
+VPN server in your profile</strong>. Your credentials and one-time code are sent only
+to that server, over the encrypted connection, to sign you in.</p>
+<p>Tunnelkey does not inspect, log, modify, redirect or sell your traffic. What
+happens to traffic after it reaches your VPN server is governed by the operator
+of that server (you or your organisation), not by ProIT services.</p>
+<h2>3. Permissions</h2>
+<table>
+<thead>
+<tr>
+<th>Permission</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VPN (<code>BIND_VPN_SERVICE</code>, user consent dialog)</td>
+<td>Creating the VPN tunnel — the app's core function</td>
+</tr>
+<tr>
+<td>Internet</td>
+<td>Connecting to your VPN server</td>
+</tr>
+<tr>
+<td>Camera</td>
+<td>Scanning setup QR codes. Images are analysed on the device and never stored or sent anywhere</td>
+</tr>
+<tr>
+<td>Biometrics (fingerprint / face)</td>
+<td>Unlocking stored secrets. Biometric data is handled entirely by the operating system; the app never receives it</td>
+</tr>
+<tr>
+<td>Notifications and foreground service</td>
+<td>Showing the ongoing VPN connection and a Disconnect button</td>
+</tr>
+</tbody>
+</table>
+<h2>4. Setup codes and the provisioning server</h2>
+<p>Organisations can use the open-source Tunnelkey provisioning server to create
+setup QR codes. That server is <strong>installed and operated by the organisation
+itself</strong>, not by ProIT services. The organisation decides what a setup code
+contains (VPN profile, username, password, TOTP secret, links) and is the
+controller of that data; please contact your IT administrator about how they
+handle it. Setup codes are read on the device; scanning does not contact any
+server.</p>
+<h2>5. Third parties</h2>
+<p>The app contains no third-party analytics, advertising or tracking SDKs. Links
+provisioned by your administrator may open other apps (for example a web
+browser or Microsoft's Windows App for Remote Desktop); those apps have their
+own privacy policies.</p>
+<h2>6. Children</h2>
+<p>Tunnelkey is a tool for connecting to organisational or personal VPN servers and
+is not directed at children under 13 (or the equivalent minimum age in your
+country).</p>
+<h2>7. Security</h2>
+<p>Secrets are encrypted with hardware-backed keys where the device supports them,
+the app can be locked with biometrics or a strong PIN, and the source code is
+public for independent review: <a href="https://github.com/kalipsers/TunnelKey">https://github.com/kalipsers/TunnelKey</a>.</p>
+<h2>8. Your rights</h2>
+<p>Because ProIT services does not collect or hold personal data from the app,
+there is no data for us to access, correct or delete on our side. All data can
+be removed from the device as described in section 1. For data held by your VPN
+or provisioning server, contact its operator. Under the GDPR you may also lodge
+a complaint with your supervisory authority (in Slovakia: Úrad na ochranu
+osobných údajov SR).</p>
+<h2>9. Changes</h2>
+<p>If this policy changes, the new version will be published at this address with
+a new effective date. Material changes will also be noted in the app's release
+notes.</p>
+<h2>10. Contact</h2>
+<p>ProIT services — <a href="mailto:develop@pro-it.sk">develop@pro-it.sk</a></p>
+</main>
+</body>
+</html>

@@ -262,6 +262,7 @@ private fun App(vm: MainViewModel) {
                     },
                     onOpenLogs = { nav.navigate(Routes.LOGS) },
                     onSecurity = { nav.navigate(Routes.SECURITY) },
+                    onAbout = { showAbout = true },
                     onRemove = { vm.removeManaged(); lockMethod = LockMethod.None },
                 )
             } else {
@@ -403,11 +404,22 @@ private const val RDP_PACKAGE = "com.microsoft.rdc.androidx"
 
 @Composable
 private fun AboutDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
     val core = remember { runCatching { OpenVpnClient.coreVersion }.getOrDefault("") }
+    val version = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
+    }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.app_name)) },
+        title = { Text("${stringResource(R.string.app_name)} $version") },
         text = { Text(stringResource(R.string.about_body, core)) },
         confirmButton = { TextButton(onClick = onDismiss) { Text("OK") } },
+        dismissButton = {
+            TextButton(onClick = {
+                runCatching {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(context.getString(R.string.privacy_url))))
+                }
+            }) { Text(stringResource(R.string.action_privacy)) }
+        },
     )
 }

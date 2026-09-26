@@ -24,7 +24,8 @@ tunnelkey/
 ├── android/   Kotlin/Compose app + :ovpn3 module (OpenVPN 3 core via JNI)
 ├── ios/       SwiftUI app + packet tunnel extension (OpenVPNAdapter)
 ├── server/    Go provisioning server with embedded admin web UI
-└── docs/      Setup code format
+├── fastlane/  Google Play store listing (texts + graphics)
+└── docs/      Setup code format, privacy policy, Play publishing guide
 ```
 
 ## How 2FA works
@@ -144,6 +145,12 @@ open Tunnelkey.xcodeproj
 
 The tunnel uses [OpenVPNAdapter](https://github.com/ss-abramchuk/OpenVPNAdapter)
 0.8.0 (OpenVPN 3 + mbed TLS 2) via Swift Package Manager.
+
+## Publishing
+
+Google Play listing texts (English, Slovak), graphics, screenshots, privacy
+policy and step-by-step Play Console answers: [docs/play-store](docs/play-store/README.md).
+Privacy policy: <https://kalipsers.github.io/TunnelKey/privacy-policy.html>.
 
 ## Licence
 

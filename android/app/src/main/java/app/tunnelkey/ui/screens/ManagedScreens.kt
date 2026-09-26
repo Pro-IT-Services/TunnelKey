@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
@@ -73,6 +74,7 @@ fun ManagedHomeScreen(
     onOpenLink: (ManagedLink) -> Unit,
     onOpenLogs: () -> Unit,
     onSecurity: () -> Unit,
+    onAbout: () -> Unit,
     onRemove: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -96,6 +98,11 @@ fun ManagedHomeScreen(
                                 text = { Text(stringResource(R.string.action_settings)) },
                                 leadingIcon = { Icon(Icons.Outlined.Lock, null) },
                                 onClick = { menuOpen = false; onSecurity() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action_about)) },
+                                leadingIcon = { Icon(Icons.Outlined.Info, null) },
+                                onClick = { menuOpen = false; onAbout() },
                             )
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.action_remove_config), color = MaterialTheme.colorScheme.error) },
