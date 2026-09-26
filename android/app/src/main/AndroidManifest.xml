@@ -53,6 +53,17 @@
                 <data android:mimeType="application/x-openvpn-profile" />
                 <data android:mimeType="application/ovpn" />
             </intent-filter>
+            <!-- File managers (e.g. Samsung My Files) report .ovpn as a generic
+                 binary; offer "Open with Tunnelkey" for those too. The importer
+                 rejects anything that isn't an OpenVPN profile. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
