@@ -341,9 +341,17 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
 
     private fun promoteToForeground(profileName: String) {
         val nm = getSystemService(NotificationManager::class.java)
+        // Default importance so the shade shows title, timer and Disconnect instead of
+        // a collapsed "silent" icon; sound and vibration stay off. A channel's
+        // importance can't be raised later, hence the new id and the old one removed.
+        nm.deleteNotificationChannel(LEGACY_CHANNEL_ID)
         if (nm.getNotificationChannel(CHANNEL_ID) == null) {
             nm.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(CHANNEL_ID, getString(R.string.notification_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                    setSound(null, null)
+                    enableVibration(false)
+                    setShowBadge(false)
+                },
             )
         }
         ServiceCompat.startForeground(
@@ -365,14 +373,24 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
             Intent(this, TunnelService::class.java).setAction(ACTION_DISCONNECT),
             PendingIntent.FLAG_IMMUTABLE,
         )
+        val since = TunnelState.status.value.connectedAt
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_tunnel)
+            .setColor(0xFFE3A93B.toInt())
             .setContentTitle(getString(if (connected) R.string.notification_connected else R.string.notification_connecting))
             .setContentText(profileName)
             .setContentIntent(mainActivityIntent())
             .setOngoing(true)
+            .setSilent(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .apply {
+                // Running connection time, like the in-app timer.
+                if (connected && since != null) setWhen(since).setUsesChronometer(true).setShowWhen(true)
+                else setShowWhen(false)
+            }
             .addAction(0, getString(R.string.action_disconnect), disconnect)
             .build()
     }
@@ -389,7 +407,8 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         private const val EXTRA_PROFILE_ID = "profile"
         private const val EXTRA_PASSWORD = "password"
         private const val EXTRA_CODE = "code"
-        private const val CHANNEL_ID = "tunnel"
+        private const val CHANNEL_ID = "vpn_status"
+        private const val LEGACY_CHANNEL_ID = "tunnel"
         private const val NOTIFICATION_ID = 1
 
         /** Caller must have obtained VPN consent via [VpnService.prepare] first. */
