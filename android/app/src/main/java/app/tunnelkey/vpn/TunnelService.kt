@@ -407,8 +407,10 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
             .setContentText(profileName)
             .setContentIntent(mainActivityIntent())
             .setOngoing(true)
-            .setSilent(true)
+            // No setSilent(): Android 16+ draws "silent" notifications minimised to
+            // an icon. The channel already has no sound or vibration.
             .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
