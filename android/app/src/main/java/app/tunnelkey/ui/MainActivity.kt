@@ -154,15 +154,7 @@ private fun App(vm: MainViewModel) {
         if (result.resultCode == Activity.RESULT_OK && action != null) action()
         else if (action != null) error = R.string.status_failed to context.getString(R.string.error_vpn_permission)
     }
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
-    /** Runs [action] once VPN consent (and, best effort, notification permission) is in place. */
-    fun withVpnPermission(action: () -> Unit) {
-        if (Build.VERSION.SDK_INT >= 33 &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+    fun withVpnConsent(action: () -> Unit) {
         val consent = VpnService.prepare(context)
         if (consent != null) {
             pendingConnect = action
@@ -170,6 +162,28 @@ private fun App(vm: MainViewModel) {
         } else {
             action()
         }
+    }
+
+    // Asked first and awaited: launching the VPN consent at the same time
+    // dismisses this prompt, and without the permission Android hides the
+    // ongoing VPN notification (with its Disconnect button).
+    var afterNotificationPrompt by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        val next = afterNotificationPrompt
+        afterNotificationPrompt = null
+        next?.invoke() // connect either way; the notification is optional
+    }
+
+    /** Runs [action] once notification permission has been asked for and VPN consent is in place. */
+    fun withVpnPermission(action: () -> Unit) {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            afterNotificationPrompt = { withVpnConsent(action) }
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        withVpnConsent(action)
     }
 
     fun openLink(link: ManagedLink) {
