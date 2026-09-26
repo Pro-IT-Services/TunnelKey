@@ -449,6 +449,11 @@ Java_app_tunnelkey_ovpn3_OpenVpnClient_nativeEval(JNIEnv *env,
     config.allowLocalLanAccess = allow_lan;
     config.info = true;
     config.autologinSessions = true;
+    // Many servers (UniFi, older setups) still push comp-lzo. The core's default
+    // ("no") drops such connections with COMPRESS_ERROR. "asym" accepts
+    // compressed packets from the server but never compresses what we send,
+    // which keeps the VORACLE mitigation.
+    config.compressionMode = "asym";
 
     const ClientAPI::EvalConfig eval = client_from(handle)->eval_config(config);
     wipe(config.content);

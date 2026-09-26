@@ -41,6 +41,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         configuration.fileContent = Data(ovpn.utf8)
         configuration.guiVersion = "Tunnelkey \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")"
         configuration.tunPersist = true
+        // Accept comp-lzo pushed by the server, never compress uplink (VORACLE-safe).
+        configuration.compressionMode = .asym
         configuration.info = true
 
         let evaluation: OpenVPNConfigurationEvaluation
