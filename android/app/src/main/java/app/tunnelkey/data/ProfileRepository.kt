@@ -52,10 +52,16 @@ class ProfileRepository(private val context: Context, private val secrets: Secre
             buffer
         } ?: throw ImportException(R.string.import_unreadable)
 
-        val content = String(bytes, Charsets.UTF_8).removePrefix(Char(0xFEFF).toString()) // byte-order mark
+        draftFromText(String(bytes, Charsets.UTF_8), name.substringBeforeLast('.'))
+    }
+
+    /** A profile pasted as text (also used for files). */
+    fun draftFromText(text: String, suggestedName: String): ImportDraft {
+        if (text.length > OvpnInspector.MAX_PROFILE_BYTES) throw ImportException(R.string.import_too_large)
+        val content = text.removePrefix(Char(0xFEFF).toString()) // byte-order mark
         val summary = OvpnInspector.inspect(content)
         if (!summary.isValid) throw ImportException(R.string.import_not_profile)
-        ImportDraft(name.substringBeforeLast('.').ifBlank { "Profile" }, content, summary)
+        return ImportDraft(suggestedName.ifBlank { "Profile" }, content, summary)
     }
 
     /** Saves a new profile (when [content] is given) or updates an existing one. */

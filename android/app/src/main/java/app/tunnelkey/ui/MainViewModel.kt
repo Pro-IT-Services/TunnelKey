@@ -140,9 +140,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Import & edit --------------------------------------------------
 
-    fun import(uri: Uri) = viewModelScope.launch {
+    fun import(uri: Uri) = openDraft { repo.readDraft(uri) }
+
+    /** Import a profile copied as text. */
+    fun importText(text: String, suggestedName: String) = openDraft { repo.draftFromText(text, suggestedName) }
+
+    private fun openDraft(read: suspend () -> ImportDraft) = viewModelScope.launch {
         try {
-            val draft: ImportDraft = repo.readDraft(uri)
+            val draft: ImportDraft = read()
             val s = draft.summary
             _form.value = EditorForm(
                 name = draft.suggestedName,

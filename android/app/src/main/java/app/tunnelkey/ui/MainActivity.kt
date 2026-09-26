@@ -145,8 +145,19 @@ private fun App(vm: MainViewModel) {
     var lockMessage by remember { mutableStateOf<String?>(null) }
     var lockMethod by remember { mutableStateOf(vm.managed.lockMethod) }
 
-    val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+    val filePicker = rememberLauncherForActivityResult(PickProfileFile()) { uri ->
         if (uri != null) vm.import(uri)
+    }
+    var showImport by remember { mutableStateOf(false) }
+
+    fun pasteProfile() {
+        val clip = context.getSystemService(android.content.ClipboardManager::class.java)
+            ?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
+        if (!clip.contains("remote")) {
+            error = R.string.error_import to context.getString(R.string.import_clipboard_empty)
+            return
+        }
+        vm.importText(clip, context.getString(R.string.import_pasted_name))
     }
     val vpnConsent = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val action = pendingConnect
@@ -286,7 +297,7 @@ private fun App(vm: MainViewModel) {
                     status = status,
                     onSelect = { vm.select(it.id) },
                     onEdit = { vm.edit(it); nav.navigate(Routes.EDITOR) },
-                    onImport = { filePicker.launch(arrayOf("*/*")) },
+                    onImport = { showImport = true },
                     onScan = { nav.navigate(Routes.SCAN) },
                     onConnect = { p: Profile -> withVpnPermission { vm.requestConnect(p) } },
                     onDisconnect = vm::disconnect,
@@ -407,6 +418,15 @@ private fun App(vm: MainViewModel) {
             dismissButton = if (link.kind == "rdp") {
                 { TextButton(onClick = { missingApp = null }) { Text(stringResource(R.string.action_cancel)) } }
             } else null,
+        )
+    }
+
+    if (showImport) {
+        ImportSheet(
+            onChooseFile = { filePicker.launch(Unit) },
+            onPaste = ::pasteProfile,
+            onScan = { nav.navigate(Routes.SCAN) },
+            onDismiss = { showImport = false },
         )
     }
 

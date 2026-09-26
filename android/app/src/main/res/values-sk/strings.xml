@@ -189,6 +189,17 @@
     <string name="setup_code_incomplete">Kód nastavenia je neúplný.</string>
     <string name="pin_dots_description">Zadané číslice: %1$d z %2$d</string>
 
+    <!-- Import -->
+    <string name="import_sheet_title">Pridať VPN profil</string>
+    <string name="import_choose_file">Vybrať súbor .ovpn</string>
+    <string name="import_choose_file_body">Prehliadať cez Moje súbory alebo iného správcu súborov.</string>
+    <string name="import_paste">Vložiť zo schránky</string>
+    <string name="import_paste_body">Najprv skopírujte text profilu, potom ho vložte sem.</string>
+    <string name="import_scan_body">Naskenujte QR kód od vášho správcu.</string>
+    <string name="import_chooser_title">Vybrať súbor .ovpn pomocou</string>
+    <string name="import_clipboard_empty">Schránka neobsahuje OpenVPN profil. Najprv skopírujte celý text súboru.</string>
+    <string name="import_pasted_name">Vložený profil</string>
+
     <!-- Connection steps shown while connecting -->
     <string name="step_resolve">hľadá sa server</string>
     <string name="step_connecting">kontaktuje sa server</string>

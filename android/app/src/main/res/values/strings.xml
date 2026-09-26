@@ -187,6 +187,17 @@
     <string name="setup_code_incomplete">The setup code is incomplete.</string>
     <string name="pin_dots_description">%1$d of %2$d digits entered</string>
 
+    <!-- Import -->
+    <string name="import_sheet_title">Add a VPN profile</string>
+    <string name="import_choose_file">Choose .ovpn file</string>
+    <string name="import_choose_file_body">Browse with My Files or another file manager.</string>
+    <string name="import_paste">Paste from clipboard</string>
+    <string name="import_paste_body">Copy the profile\'s text first, then paste it here.</string>
+    <string name="import_scan_body">Scan the QR code from your administrator.</string>
+    <string name="import_chooser_title">Choose the .ovpn file with</string>
+    <string name="import_clipboard_empty">The clipboard doesn\'t contain an OpenVPN profile. Copy the whole file text first.</string>
+    <string name="import_pasted_name">Pasted profile</string>
+
     <!-- Connection steps shown while connecting -->
     <string name="step_resolve">finding server</string>
     <string name="step_connecting">contacting server</string>
