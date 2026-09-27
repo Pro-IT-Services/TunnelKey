@@ -32,7 +32,7 @@
   Tunnelkey
 </div>
 <h1>Tunnelkey Privacy Policy</h1>
-<p><strong>Effective date:</strong> 26 September 2026
+<p><strong>Effective date:</strong> 26 September 2026 · <strong>Last updated:</strong> 27 September 2026
 <strong>Applies to:</strong> the Tunnelkey apps for Android and iOS, and the self-hosted Tunnelkey provisioning server software
 <strong>Publisher:</strong> ProIT services — contact: <a href="mailto:develop@pro-it.sk">develop@pro-it.sk</a></p>
 <h2>Summary</h2>
@@ -84,6 +84,9 @@ accounts, no analytics, no advertising and no tracking.</p>
 </tbody>
 </table>
 <p>Authenticator codes you type are used for a single sign-in and are never stored.</p>
+<p>The app reads the clipboard only when you tap <em>Paste code</em> or <em>Paste from
+clipboard</em>, to take a code or a profile you copied yourself; nothing is read in
+the background.</p>
 <p>This data is <strong>not transmitted to ProIT services or any third party</strong>. It is
 excluded from cloud backups and device transfers. You can delete it at any time
 by deleting a profile, using <em>Remove configuration</em>, or uninstalling the app.
@@ -135,6 +138,13 @@ contains (VPN profile, username, password, TOTP secret, links) and is the
 controller of that data; please contact your IT administrator about how they
 handle it. Setup codes are read on the device; scanning does not contact any
 server.</p>
+<p>Setup codes can also be created with the Tunnelkey setup page
+(<a href="https://kalipsers.github.io/TunnelKey/provision/">https://kalipsers.github.io/TunnelKey/provision/</a>). It runs entirely in the
+web browser: what you enter is processed on your computer, never transmitted
+(the page is technically prevented from making network requests) and not stored
+unless you save a package file yourself. GitHub, which hosts the page, may log
+ordinary web-server data such as your IP address when the page is loaded; see
+GitHub's privacy statement.</p>
 <h2>5. Third parties</h2>
 <p>The app contains no third-party analytics, advertising or tracking SDKs. Links
 provisioned by your administrator may open other apps (for example a web

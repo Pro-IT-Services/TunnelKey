@@ -1,6 +1,6 @@
 # Tunnelkey Privacy Policy
 
-**Effective date:** 26 September 2026
+**Effective date:** 26 September 2026 · **Last updated:** 27 September 2026
 **Applies to:** the Tunnelkey apps for Android and iOS, and the self-hosted Tunnelkey provisioning server software
 **Publisher:** ProIT services — contact: [develop@pro-it.sk](mailto:develop@pro-it.sk)
 
@@ -25,6 +25,10 @@ To work, the app stores the following **only on your device**:
 | Connection log (connection events, server address, errors) | Showing you what happened, for troubleshooting | Kept in memory / app storage; shared only if *you* copy or share it |
 
 Authenticator codes you type are used for a single sign-in and are never stored.
+
+The app reads the clipboard only when you tap *Paste code* or *Paste from
+clipboard*, to take a code or a profile you copied yourself; nothing is read in
+the background.
 
 This data is **not transmitted to ProIT services or any third party**. It is
 excluded from cloud backups and device transfers. You can delete it at any time
@@ -61,6 +65,14 @@ contains (VPN profile, username, password, TOTP secret, links) and is the
 controller of that data; please contact your IT administrator about how they
 handle it. Setup codes are read on the device; scanning does not contact any
 server.
+
+Setup codes can also be created with the Tunnelkey setup page
+(<https://kalipsers.github.io/TunnelKey/provision/>). It runs entirely in the
+web browser: what you enter is processed on your computer, never transmitted
+(the page is technically prevented from making network requests) and not stored
+unless you save a package file yourself. GitHub, which hosts the page, may log
+ordinary web-server data such as your IP address when the page is loaded; see
+GitHub's privacy statement.
 
 ## 5. Third parties
 
