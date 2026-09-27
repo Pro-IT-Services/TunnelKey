@@ -46,6 +46,19 @@ fresh one if the current code is about to expire.
 
 ## Provisioning server
 
+### Browser-only (no server)
+
+**<https://kalipsers.github.io/TunnelKey/provision/>** — the same setup codes,
+created entirely in the browser: pick the `.ovpn`, enter credentials, the TOTP
+secret and links, get the QR code(s). Nothing is uploaded or stored (the page is
+not allowed to make network requests); packages can be saved to / opened from a
+local file for later edits. Source: [`docs/provision/`](docs/provision/), tests:
+`node --test docs/provision/tests/core.test.mjs`. Host your own copy by serving
+that folder from any static web server.
+
+Use the server below when you want accounts, a shared list of packages and
+central storage.
+
 ### Docker (recommended)
 
 Needs Docker with the Compose plugin and SSH access to the repository.
