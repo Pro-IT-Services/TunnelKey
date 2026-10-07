@@ -165,7 +165,16 @@ private fun App(vm: MainViewModel) {
         if (result.resultCode == Activity.RESULT_OK && action != null) action()
         else if (action != null) error = R.string.status_failed to context.getString(R.string.error_vpn_permission)
     }
+    // Prominent in-app disclosure required by Google Play's VpnService policy,
+    // shown once before Android's own VPN consent dialog.
+    val uiPrefs = remember { context.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE) }
+    var disclosureFor by remember { mutableStateOf<(() -> Unit)?>(null) }
+
     fun withVpnConsent(action: () -> Unit) {
+        if (!uiPrefs.getBoolean(KEY_VPN_DISCLOSURE, false)) {
+            disclosureFor = action
+            return
+        }
         val consent = VpnService.prepare(context)
         if (consent != null) {
             pendingConnect = action
@@ -430,8 +439,26 @@ private fun App(vm: MainViewModel) {
         )
     }
 
+    disclosureFor?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { disclosureFor = null },
+            title = { Text(stringResource(R.string.vpn_disclosure_title)) },
+            text = { Text(stringResource(R.string.vpn_disclosure_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    uiPrefs.edit().putBoolean(KEY_VPN_DISCLOSURE, true).apply()
+                    disclosureFor = null
+                    withVpnConsent(pending)
+                }) { Text(stringResource(R.string.vpn_disclosure_accept)) }
+            },
+            dismissButton = { TextButton(onClick = { disclosureFor = null }) { Text(stringResource(R.string.action_cancel)) } },
+        )
+    }
+
     if (showAbout) AboutDialog { showAbout = false }
 }
+
+private const val KEY_VPN_DISCLOSURE = "vpn_disclosure_accepted"
 
 /** Microsoft's Windows App (formerly Remote Desktop) for Android. */
 private const val RDP_PACKAGE = "com.microsoft.rdc.androidx"

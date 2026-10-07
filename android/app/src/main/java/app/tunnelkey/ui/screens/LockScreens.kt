@@ -109,7 +109,7 @@ fun LockSetupScreen(
             Text(stringResource(R.string.setup_replace_warning), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
         }
 
-        Spacer(Modifier.weight(1f).heightIn(min = 24.dp))
+        Spacer(Modifier.height(32.dp))
         if (biometricAvailable) {
             Choice(Icons.Outlined.Fingerprint, stringResource(R.string.setup_use_biometric), stringResource(R.string.setup_use_biometric_body), onBiometric)
             Spacer(Modifier.height(12.dp))

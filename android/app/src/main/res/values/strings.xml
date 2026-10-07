@@ -205,4 +205,9 @@
     <string name="step_get_config">getting settings</string>
     <string name="step_assign_ip">assigning address</string>
     <string name="step_add_routes">setting up routes</string>
+    <!-- Play review -->
+    <string name="error_timeout">The VPN server didn\'t answer within %1$d seconds. Check your internet connection and that the server address in the profile can be reached from this network.</string>
+    <string name="vpn_disclosure_title">How Tunnelkey uses the VPN</string>
+    <string name="vpn_disclosure_body">To connect, Tunnelkey uses Android\'s VPN service to create an encrypted OpenVPN tunnel to the server in your profile. While connected, this phone\'s network traffic goes through that server, which is run by you or your organisation.\n\nTunnelkey does not collect, log, inspect, modify or sell your traffic or any personal data, and sends nothing to its developer.\n\nNext, Android asks you to allow the VPN connection.</string>
+    <string name="vpn_disclosure_accept">Agree and continue</string>
 </resources>

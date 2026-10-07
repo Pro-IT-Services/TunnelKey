@@ -15,8 +15,8 @@ android {
         applicationId = "com.proitservices.tunnelkey"
         minSdk = 26
         targetSdk = 36
-        versionCode = 101
-        versionName = "1.0.1"
+        versionCode = 102
+        versionName = "1.0.2"
     }
 
     // Upload key for Google Play. Create keystore.properties next to this

@@ -95,8 +95,17 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
 
     private fun startTunnel(profileId: String, password: String?, code: String?) {
         val repo = (application as TunnelkeyApp).profiles
-        val p = repo.get(profileId) ?: return
-        promoteToForeground(p.name)
+        val p = repo.get(profileId)
+        // startForegroundService() obliges us to call startForeground() promptly,
+        // even when there is nothing to connect, or Android kills the app.
+        promoteToForeground(p?.name ?: getString(R.string.app_name))
+        if (p == null) {
+            if (worker?.isAlive != true) {
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            return
+        }
 
         // Replace any running session.
         val previous = worker
@@ -127,7 +136,8 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         var failure: FailureKind? = null
         var message = ""
         try {
-            val eval = c.evaluate(config, "Tunnelkey ${BuildConfig.VERSION_NAME}")
+            // Give up on servers that can't be reached instead of retrying forever.
+            val eval = c.evaluate(config, "Tunnelkey ${BuildConfig.VERSION_NAME}", connectTimeoutSeconds = CONNECT_TIMEOUT_S)
             if (eval.error) {
                 failure = FailureKind.Profile
                 message = eval.message
@@ -163,7 +173,11 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         } catch (e: OpenVpnClient.ConnectException) {
             if (!userStopped) {
                 failure = if (e.status.contains("auth", ignoreCase = true)) FailureKind.AuthFailed else FailureKind.Other
-                message = e.message.orEmpty()
+                message = if (e.status.contains("timeout", ignoreCase = true)) {
+                    getString(R.string.error_timeout, CONNECT_TIMEOUT_S)
+                } else {
+                    e.message.orEmpty()
+                }
             }
         } catch (e: Exception) {
             failure = FailureKind.Other
@@ -439,6 +453,7 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         private const val LEGACY_CHANNEL_ID = "tunnel"
         private const val NOTIFICATION_ID = 1
         private const val STOP_TIMEOUT_MS = 15_000L
+        private const val CONNECT_TIMEOUT_S = 30
 
         /** Caller must have obtained VPN consent via [VpnService.prepare] first. */
         fun connect(context: Context, profileId: String, password: String?, code: String?) {
