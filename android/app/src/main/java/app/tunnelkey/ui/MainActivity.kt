@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.net.Uri
 import android.net.VpnService
 import android.os.Build
@@ -12,7 +13,6 @@ import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -63,9 +64,23 @@ class MainActivity : FragmentActivity() {
     private val vm: MainViewModel by viewModels()
     private var stoppedAt = 0L
 
+    /**
+     * Edge-to-edge without the deprecated Window bar-colour setters that
+     * enableEdgeToEdge() still calls on Android 8-14 (flagged by Play). The theme
+     * makes the bars transparent; Android 15+ enforces that on its own.
+     */
+    private fun drawEdgeToEdge() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val dark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = !dark
+            isAppearanceLightNavigationBars = !dark
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        drawEdgeToEdge()
         if (savedInstanceState == null) handleIncoming(intent)
         setContent {
             TunnelkeyTheme {
