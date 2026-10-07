@@ -43,7 +43,7 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
     private var stopJob: Job? = null
 
     @Volatile private var client: OpenVpnClient? = null
-    @Volatile private var worker: Thread? = null
+    @Volatile private var session: Session? = null
     @Volatile private var profile: Profile? = null
     @Volatile private var userStopped = false
 
@@ -62,7 +62,13 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
                 intent.removeExtra(EXTRA_CODE)
                 startTunnel(id, password, code)
             }
-            ACTION_DISCONNECT -> if (worker?.isAlive == true) stopTunnel() else stopSelf()
+            ACTION_DISCONNECT -> if (session.isRunning()) {
+                stopTunnel()
+            } else {
+                // Nothing left to stop; make sure the UI isn't left waiting.
+                settleIdleState()
+                stopSelf()
+            }
             // System-initiated start (always-on VPN). Profiles with 2FA need
             // the user to type a code, so there is nothing we can do here.
             else -> {
@@ -86,9 +92,38 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
     }
 
     override fun onDestroy() {
-        stopTunnel()
+        val s = session
+        if (s != null && s.isRunning()) {
+            // The service is going away with a session still up (system kill,
+            // revoke). The scope dies with us, so stop the core from a plain thread.
+            userStopped = true
+            val c = client
+            Thread({
+                val deadline = System.currentTimeMillis() + STOP_TIMEOUT_MS
+                while (s.thread.isAlive && System.currentTimeMillis() < deadline) {
+                    c?.stop()
+                    s.thread.join(250)
+                }
+            }, "tunnelkey-stop").start()
+        }
+        session = null
+        settleIdleState()
         scope.cancel()
         super.onDestroy()
+    }
+
+    /** Moves the UI out of any in-progress phase once no session is running. */
+    private fun settleIdleState() {
+        TunnelState.update {
+            when (it.phase) {
+                Phase.Disconnected, Phase.Failed -> it
+                else -> if (it.failure == FailureKind.Revoked) {
+                    TunnelStatus(Phase.Failed, profileId = it.profileId, failure = FailureKind.Revoked, message = getString(R.string.error_revoked))
+                } else {
+                    TunnelStatus(phase = Phase.Disconnected, profileId = it.profileId)
+                }
+            }
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -100,7 +135,7 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         // even when there is nothing to connect, or Android kills the app.
         promoteToForeground(p?.name ?: getString(R.string.app_name))
         if (p == null) {
-            if (worker?.isAlive != true) {
+            if (!session.isRunning()) {
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -108,7 +143,7 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         }
 
         // Replace any running session.
-        val previous = worker
+        val previous = session?.takeIf { it.isRunning() }
         val previousClient = client
         stopJob?.cancel()
         userStopped = false
@@ -119,18 +154,22 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         }
         TunnelState.log("Connecting to ${p.name} (${p.remote})")
 
-        worker = Thread({
+        val s = Session()
+        s.thread = Thread({
             // Keep asking the old session to stop (see stopTunnel) before starting.
             val until = System.currentTimeMillis() + STOP_TIMEOUT_MS
-            while (previous?.isAlive == true && System.currentTimeMillis() < until) {
+            while (previous != null && previous.thread.isAlive && System.currentTimeMillis() < until) {
                 previousClient?.stop()
-                previous.join(250)
+                previous.thread.join(250)
             }
-            runSession(p, repo.readConfig(p.id), password, code)
-        }, "tunnelkey-openvpn").also { it.start() }
+            runSession(s, p, repo.readConfig(p.id), password, code)
+        }, "tunnelkey-openvpn")
+        // Publish before starting so the thread always sees itself as current.
+        session = s
+        s.thread.start()
     }
 
-    private fun runSession(p: Profile, config: String, password: String?, code: String?) {
+    private fun runSession(s: Session, p: Profile, config: String, password: String?, code: String?) {
         val c = OpenVpnClient(this)
         client = c
         var failure: FailureKind? = null
@@ -185,13 +224,16 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         } finally {
             if (client === c) client = null
             c.close()
-            finishSession(failure, message)
+            finishSession(s, failure, message)
         }
     }
 
-    private fun finishSession(failure: FailureKind?, message: String) {
+    private fun finishSession(s: Session, failure: FailureKind?, message: String) {
+        // Mark the session over before stopSelf(): onDestroy() can run while this
+        // thread is still unwinding and must not treat it as running.
+        s.ended = true
         // A newer session may already be starting on another worker.
-        if (worker != Thread.currentThread()) return
+        if (session !== s) return
         statsJob?.cancel()
         TunnelState.update { current ->
             val f = failure ?: current.failure.takeUnless { userStopped }
@@ -216,8 +258,8 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
 
     private fun stopTunnel() {
         userStopped = true
-        val session = worker
-        if (session?.isAlive != true) return
+        val s = session
+        if (s == null || !s.isRunning()) return
         TunnelState.update { it.copy(phase = Phase.Disconnecting) }
         stopJob?.cancel()
         stopJob = scope.launch {
@@ -225,21 +267,18 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
             // at the very start of a connection is lost. Keep asking until the
             // session thread actually ends.
             val deadline = System.currentTimeMillis() + STOP_TIMEOUT_MS
-            while (session.isAlive && System.currentTimeMillis() < deadline) {
+            while (s.isRunning() && System.currentTimeMillis() < deadline) {
                 client?.stop()
                 delay(250)
             }
-            if (session.isAlive && worker === session) {
+            if (s.isRunning() && session === s) {
+                s.ended = true
                 TunnelState.log("Session didn't stop within ${STOP_TIMEOUT_MS / 1000} s; closing the service")
                 TunnelState.update { TunnelStatus(phase = Phase.Disconnected, profileId = it.profileId) }
                 ServiceCompat.stopForeground(this@TunnelService, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
         }
-    }
-
-    private fun stopCore() {
-        client?.stop()
     }
 
     // ---- OpenVpnClient.Callbacks ---------------------------------------
@@ -442,6 +481,14 @@ class TunnelService : VpnService(), OpenVpnClient.Callbacks {
         Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
         PendingIntent.FLAG_IMMUTABLE,
     )
+
+    /** One connection attempt, from setup until the core returns. */
+    private class Session {
+        lateinit var thread: Thread
+        @Volatile var ended = false
+    }
+
+    private fun Session?.isRunning(): Boolean = this != null && !ended && thread.isAlive
 
     companion object {
         private const val ACTION_CONNECT = "app.tunnelkey.CONNECT"

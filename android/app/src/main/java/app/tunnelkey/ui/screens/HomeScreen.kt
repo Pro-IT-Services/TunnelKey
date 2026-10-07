@@ -271,7 +271,8 @@ internal fun ConnectBar(status: TunnelStatus, enabled: Boolean, onConnect: () ->
                 Phase.Connecting, Phase.Reconnecting -> OutlinedButton(onClick = onDisconnect, modifier = modifier, shape = shape) {
                     Text(stringResource(R.string.action_cancel), style = MaterialTheme.typography.labelLarge)
                 }
-                Phase.Disconnecting -> OutlinedButton(onClick = {}, enabled = false, modifier = modifier, shape = shape) {
+                // Still tappable: sends Disconnect again, which also clears a stale state.
+                Phase.Disconnecting -> OutlinedButton(onClick = onDisconnect, modifier = modifier, shape = shape) {
                     Text(stringResource(R.string.status_disconnecting), style = MaterialTheme.typography.labelLarge)
                 }
                 Phase.Disconnected, Phase.Failed -> Button(onClick = onConnect, enabled = enabled, modifier = modifier, shape = shape) {
