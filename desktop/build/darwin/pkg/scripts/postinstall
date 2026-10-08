@@ -1,0 +1,28 @@
+#!/bin/sh
+# Tunnelkey pkg postinstall: fix ownership/modes and (re)start the helper daemon.
+# $3 is the target volume.
+set -e
+
+LABEL=app.tunnelkey.helper
+ROOT="${3:-/}"
+ROOT="${ROOT%/}"
+PLIST="$ROOT/Library/LaunchDaemons/$LABEL.plist"
+HELPER="$ROOT/Library/PrivilegedHelperTools/$LABEL"
+OVPN_DIR="$ROOT/Library/Application Support/Tunnelkey/openvpn"
+
+/usr/sbin/chown root:wheel "$PLIST" "$HELPER"
+/bin/chmod 0644 "$PLIST"
+/bin/chmod 0755 "$HELPER"
+/usr/sbin/chown -R root:wheel "$OVPN_DIR"
+/bin/chmod 0755 "$OVPN_DIR" "$OVPN_DIR/openvpn"
+/bin/mkdir -p "$ROOT/Library/Logs/Tunnelkey"
+/bin/chmod 0755 "$ROOT/Library/Logs/Tunnelkey"
+
+# Only manage launchd when installing onto the running system.
+if [ -z "$ROOT" ]; then
+	/bin/launchctl bootout "system/$LABEL" 2>/dev/null || true
+	/bin/launchctl enable "system/$LABEL" || true
+	/bin/launchctl bootstrap system "$PLIST"
+	/bin/launchctl kickstart -k "system/$LABEL" 2>/dev/null || true
+fi
+exit 0

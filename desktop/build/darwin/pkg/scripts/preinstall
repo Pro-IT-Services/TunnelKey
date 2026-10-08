@@ -1,0 +1,9 @@
+#!/bin/sh
+# Tunnelkey pkg preinstall: stop a running helper before its files are replaced.
+# $3 is the target volume.
+LABEL=app.tunnelkey.helper
+
+if [ "${3:-/}" = "/" ]; then
+	/bin/launchctl bootout "system/$LABEL" 2>/dev/null || true
+fi
+exit 0

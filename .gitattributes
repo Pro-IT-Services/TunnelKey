@@ -4,3 +4,8 @@ gradlew text eol=lf
 *.bat text eol=crlf
 *.png binary
 *.jar binary
+# Desktop packaging files run on Linux/macOS: keep LF even on Windows checkouts
+desktop/build/linux/** text eol=lf
+desktop/build/darwin/** text eol=lf
+desktop/build/**/*.png binary
+desktop/build/**/*.ico binary

@@ -55,6 +55,7 @@ func (s *Server) routes(static http.Handler) http.Handler {
 	mux.HandleFunc("PUT /api/packages/{id}", s.auth(s.handleUpdate))
 	mux.HandleFunc("DELETE /api/packages/{id}", s.auth(s.handleDelete))
 	mux.HandleFunc("GET /api/packages/{id}/codes", s.auth(s.handleCodes))
+	mux.HandleFunc("GET /api/packages/{id}/payload", s.auth(s.handlePayload))
 	mux.HandleFunc("POST /api/totp/preview", s.auth(s.handleTOTPPreview))
 	mux.Handle("/", static)
 	return securityHeaders(mux)
@@ -486,6 +487,17 @@ func (s *Server) handleCodes(w http.ResponseWriter, r *http.Request, admin strin
 	}
 	log.Printf("admin %q displayed setup codes for package %s", admin, p.ID)
 	writeJSON(w, out)
+}
+
+// handlePayload returns the setup-code payload so the browser can encrypt it
+// into a desktop setup file. The file password never reaches the server.
+func (s *Server) handlePayload(w http.ResponseWriter, r *http.Request, admin string) {
+	p, ok := s.loadPackage(w, r)
+	if !ok {
+		return
+	}
+	log.Printf("admin %q fetched the setup payload for package %s", admin, p.ID)
+	writeJSON(w, buildPayload(p))
 }
 
 func (s *Server) handleTOTPPreview(w http.ResponseWriter, r *http.Request, _ string) {

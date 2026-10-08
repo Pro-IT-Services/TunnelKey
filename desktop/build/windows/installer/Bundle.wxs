@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tunnelkey-<ver>-setup.exe: Burn bundle that installs the official OpenVPN
+  2.6 community MSI (only when OpenVPN is missing or older than the bundled
+  release) followed by Tunnelkey.msi. Built by desktop/scripts/build-windows.ps1.
+
+  Preprocessor variables:
+    Version       bundle version, x.y.z
+    TunnelkeyMsi  path to the Tunnelkey MSI built from Tunnelkey.wxs
+    OpenVPNMsi    path to the verified OpenVPN-2.6.x-Ixxx-amd64.msi
+    OpenVPNMst    feature-selection transform for that MSI
+    OpenVPNFileVersion  file version of openvpn.exe in that MSI (e.g. 2.6.23.0)
+    IconFile      path to icon.ico
+    LogoFile      64x64 PNG shown by the bootstrapper UI
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Bundle Name="Tunnelkey"
+          Manufacturer="ProIT services"
+          Version="$(var.Version)"
+          UpgradeCode="{772BEF3D-1821-4F24-8593-84AC7DE632A1}"
+          IconSourceFile="$(var.IconFile)"
+          AboutUrl="https://github.com/kalipsers/TunnelKey"
+          HelpUrl="https://github.com/kalipsers/TunnelKey"
+          Copyright="Copyright (c) 2026 ProIT services. AGPL-3.0."
+          DisableModify="yes">
+
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          LicenseUrl="https://github.com/kalipsers/TunnelKey/blob/main/LICENSE"
+          LogoFile="$(var.LogoFile)"
+          SuppressOptionsUI="yes"
+          ShowVersion="yes" />
+    </BootstrapperApplication>
+
+    <bal:Condition Message="Tunnelkey requires 64-bit Windows 10 or later."
+                   Condition="VersionNT64 &gt;= v10.0" />
+
+    <!--
+      Existing OpenVPN: the official MSI writes HKLM\SOFTWARE\OpenVPN exe_path.
+      Read the version of that openvpn.exe; the bundled release or anything
+      newer is used as-is (including releases installed by the user or other apps).
+    -->
+    <util:RegistrySearch Id="OpenVPNExePathSearch"
+                         Root="HKLM"
+                         Key="SOFTWARE\OpenVPN"
+                         Value="exe_path"
+                         Bitness="always64"
+                         Result="value"
+                         Variable="OpenVPNExePath" />
+    <util:FileSearch Id="OpenVPNExeVersionSearch"
+                     After="OpenVPNExePathSearch"
+                     Condition="OpenVPNExePath"
+                     Path="[OpenVPNExePath]"
+                     Result="version"
+                     Variable="OpenVPNExeVersion" />
+
+    <Chain>
+      <!--
+        Permanent: uninstalling Tunnelkey leaves OpenVPN in place (other
+        software may rely on it); it stays visible in Apps & features.
+
+        Installed when OpenVPN is missing or older than the bundled release
+        (newer installs are left alone). Burn does not allow ADDLOCAL, so the
+        feature choice is made with INSTALLLEVEL=1 plus a transform generated
+        by build-windows.ps1 that lowers the "OpenVPN" core feature to level 1.
+        Result: openvpn.exe + interactive service (OpenVPN) and the drivers
+        (ovpn-dco on Windows 10 2004+, Wintun, TAP-Windows6). Not installed:
+        OpenVPN GUI (+ logon autostart), openvpnserv2/PLAP, documentation,
+        sample configs, OpenSSL utilities, EasyRSA. On an upgrade of an
+        existing OpenVPN the previously installed features are migrated.
+      -->
+      <MsiPackage Id="OpenVPN"
+                  SourceFile="$(var.OpenVPNMsi)"
+                  Permanent="yes"
+                  Visible="yes"
+                  Vital="yes"
+                  InstallCondition="NOT OpenVPNExeVersion OR OpenVPNExeVersion &lt; v$(var.OpenVPNFileVersion)">
+        <MsiProperty Name="INSTALLLEVEL" Value="1" />
+        <MsiProperty Name="TRANSFORMS" Value="@tunnelkey-openvpn.mst" />
+        <Payload SourceFile="$(var.OpenVPNMst)" Name="tunnelkey-openvpn.mst" />
+      </MsiPackage>
+
+      <MsiPackage Id="Tunnelkey"
+                  SourceFile="$(var.TunnelkeyMsi)"
+                  Vital="yes" />
+    </Chain>
+  </Bundle>
+</Wix>

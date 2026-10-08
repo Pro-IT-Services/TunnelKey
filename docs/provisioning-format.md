@@ -73,3 +73,54 @@ parse the JSON. Unknown keys must be ignored.
 The server puts everything in one QR code (error correction L) when the Base45
 text is at most 2 900 characters, otherwise it splits it into parts of at most
 1 500 characters (error correction M).
+
+# Setup file format (v1) — desktop
+
+Desktop computers have no camera workflow, so the same payload (section 1) is
+delivered as a **password-encrypted file** instead of QR codes. The setup page
+encrypts it **in the browser**; the file password never reaches the server.
+Opening the file in Tunnelkey for Windows/macOS/Linux asks for the password and
+switches the app to single-config mode, exactly like scanning a setup code.
+
+- File extension: `.tunnelkey`
+- Media type: `application/vnd.tunnelkey.setup+json`
+- Content: one UTF-8 JSON object:
+
+```json
+{
+  "tunnelkey": "setup-file",
+  "v": 1,
+  "kdf": { "alg": "PBKDF2-SHA256", "iter": 600000, "salt": "<base64url, 16 bytes>" },
+  "enc": { "alg": "A256GCM", "iv": "<base64url, 12 bytes>" },
+  "data": "<base64url ciphertext with the 16-byte GCM tag appended>"
+}
+```
+
+Base64url is RFC 4648 §5 **without padding**.
+
+## Encryption
+
+1. `plaintext` = zlib(JSON payload) — the same bytes that go into Base45 for
+   setup codes (section 2, steps 1–2).
+2. `salt` = 16 random bytes, `iv` = 12 random bytes.
+3. `key` = PBKDF2-HMAC-SHA256(password as UTF-8 (NFC), salt, `iter`, 32 bytes).
+   Writers use `iter = 600000`; readers accept 100 000 – 10 000 000
+   (inclusive).
+4. `aad` = ASCII `tunnelkey-setup-file:1:<iter>:<salt>:<iv>` where `<salt>` and
+   `<iv>` are the base64url strings exactly as written in the file.
+5. `data` = AES-256-GCM(key, iv, plaintext, aad) — ciphertext ‖ 128-bit tag.
+
+The AAD binds the KDF parameters, so changing `iter`, `salt` or `iv` in the
+file makes decryption fail instead of silently weakening it. A wrong password
+and a modified file are indistinguishable (both fail the GCM tag check).
+
+Readers reject a file whose `tunnelkey`, `v`, `kdf.alg` or `enc.alg` differ
+from the values above, and one whose salt, IV or data have the wrong length.
+Whitespace and key order of the JSON do not matter (the AAD uses the field
+strings, not the file bytes).
+
+## Password rules
+
+Setup pages require at least **10 characters** and offer a generated
+passphrase. Send the file and its password through different channels (e.g.
+file by e-mail, password by phone or SMS).

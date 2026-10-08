@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  productbuild distribution for Tunnelkey-<ver>.pkg. build-macos.sh replaces
+  @VERSION@ and @COMPONENT_PKG@.
+-->
+<installer-gui-script minSpecVersion="2">
+    <title>Tunnelkey</title>
+    <organization>com.proitservices</organization>
+    <license file="LICENSE.txt" mime-type="text/plain"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true" hostArchitectures="arm64,x86_64"/>
+    <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true"/>
+    <volume-check>
+        <allowed-os-versions>
+            <os-version min="12.0"/>
+        </allowed-os-versions>
+    </volume-check>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.proitservices.tunnelkey.pkg"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.proitservices.tunnelkey.pkg" visible="false">
+        <pkg-ref id="com.proitservices.tunnelkey.pkg"/>
+    </choice>
+    <pkg-ref id="com.proitservices.tunnelkey.pkg" version="@VERSION@" onConclusion="none">@COMPONENT_PKG@</pkg-ref>
+</installer-gui-script>

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tunnelkey MSI (per-machine, x64). Built by desktop/scripts/build-windows.ps1.
+
+  Preprocessor variables (wix build -d Name=Value):
+    Version     product version, x.y.z (from wails.json info.productVersion)
+    BinDir      folder containing Tunnelkey.exe and tunnelkey-helper.exe
+    IconFile    path to icon.ico
+    LicenseRtf  AGPL-3.0 license as RTF (shown by the MSI UI)
+    LicenseTxt  AGPL-3.0 license as plain text (installed next to the app)
+
+  OpenVPN 2.6 is NOT part of this MSI. Tunnelkey-<ver>-setup.exe (Bundle.wxs)
+  chains the official OpenVPN MSI in front of it; when this MSI is installed
+  on its own, OpenVPN must already be present.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Package Name="Tunnelkey"
+           Manufacturer="ProIT services"
+           Version="$(var.Version)"
+           UpgradeCode="{E1C80E49-40D8-4841-9502-CEE00B87B7B9}"
+           Scope="perMachine"
+           Compressed="yes"
+           Language="1033">
+
+    <SummaryInformation Description="Tunnelkey - OpenVPN client with two-factor sign-in"
+                        Manufacturer="ProIT services" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+                  Schedule="afterInstallInitialize" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Add/Remove Programs -->
+    <Icon Id="TunnelkeyIcon" SourceFile="$(var.IconFile)" />
+    <Property Id="ARPPRODUCTICON" Value="TunnelkeyIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/kalipsers/TunnelKey" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/kalipsers/TunnelKey" />
+    <Property Id="ARPCONTACT" Value="develop@pro-it.sk" />
+    <Property Id="ARPCOMMENTS" Value="OpenVPN client with two-factor sign-in. Licensed under AGPL-3.0." />
+
+    <Launch Condition="VersionNT64" Message="Tunnelkey requires 64-bit Windows." />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Tunnelkey" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Tunnelkey" Level="1" AllowAbsent="no">
+      <ComponentGroupRef Id="TunnelkeyComponents" />
+    </Feature>
+
+    <!-- Minimal UI: license (AGPL-3.0) + install. Suppressed when run from the bundle. -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="TunnelkeyComponents" Directory="INSTALLFOLDER">
+
+      <!-- GUI, Start menu shortcut and the .tunnelkey file type. -->
+      <Component Id="TunnelkeyApp" Bitness="always64">
+        <File Id="TunnelkeyExe" Source="$(var.BinDir)\Tunnelkey.exe" KeyPath="yes" />
+
+        <!-- .tunnelkey: encrypted setup file, opens with Tunnelkey by default. -->
+        <ProgId Id="Tunnelkey.SetupFile"
+                Description="Tunnelkey setup file"
+                Icon="TunnelkeyExe"
+                IconIndex="0"
+                Advertise="no">
+          <Extension Id="tunnelkey" ContentType="application/vnd.tunnelkey.setup+json">
+            <Verb Id="open" Command="Open with Tunnelkey" TargetFile="TunnelkeyExe" Argument="&quot;%1&quot;" />
+          </Extension>
+        </ProgId>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\MIME\Database\Content Type\application/vnd.tunnelkey.setup+json"
+                       Name="Extension" Type="string" Value=".tunnelkey" />
+
+        <!--
+          .ovpn: offered under "Open with" only. Tunnelkey does not take the
+          default handler (the OpenVPN MSI registers its own).
+        -->
+        <RegistryKey Root="HKLM" Key="SOFTWARE\Classes\Tunnelkey.OpenVPNProfile">
+          <RegistryValue Type="string" Value="OpenVPN profile" />
+          <RegistryValue Name="FriendlyTypeName" Type="string" Value="OpenVPN profile" />
+          <RegistryValue Key="DefaultIcon" Type="string" Value="&quot;[#TunnelkeyExe]&quot;,0" />
+          <RegistryValue Key="shell\open" Name="FriendlyAppName" Type="string" Value="Tunnelkey" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[#TunnelkeyExe]&quot; &quot;%1&quot;" />
+        </RegistryKey>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Classes\.ovpn\OpenWithProgids"
+                       Name="Tunnelkey.OpenVPNProfile" Type="string" Value="" />
+
+        <!-- Application registration (Open with list, friendly name). -->
+        <RegistryKey Root="HKLM" Key="SOFTWARE\Classes\Applications\Tunnelkey.exe">
+          <RegistryValue Name="FriendlyAppName" Type="string" Value="Tunnelkey" />
+          <RegistryValue Key="SupportedTypes" Name=".tunnelkey" Type="string" Value="" />
+          <RegistryValue Key="SupportedTypes" Name=".ovpn" Type="string" Value="" />
+          <RegistryValue Key="shell\open\command" Type="string" Value="&quot;[#TunnelkeyExe]&quot; &quot;%1&quot;" />
+        </RegistryKey>
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Tunnelkey.exe"
+                       Type="string" Value="[#TunnelkeyExe]" />
+      </Component>
+
+      <!-- Privileged helper, runs as the TunnelkeyHelper service (LocalSystem). -->
+      <Component Id="TunnelkeyHelper" Bitness="always64">
+        <File Id="TunnelkeyHelperExe" Source="$(var.BinDir)\tunnelkey-helper.exe" KeyPath="yes" />
+        <ServiceInstall Id="TunnelkeyHelperService"
+                        Name="TunnelkeyHelper"
+                        DisplayName="Tunnelkey helper"
+                        Description="Starts and stops OpenVPN connections for the Tunnelkey app."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Account="LocalSystem"
+                        Vital="yes">
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              RestartServiceDelayInSeconds="5"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
+        <ServiceControl Id="TunnelkeyHelperControl"
+                        Name="TunnelkeyHelper"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+
+      <!-- Start menu shortcut (all users). HKCU key path as required by ICE43/ICE57. -->
+      <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
+        <Shortcut Id="StartMenuShortcut"
+                  Name="Tunnelkey"
+                  Description="OpenVPN client with two-factor sign-in"
+                  Target="[#TunnelkeyExe]"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\ProIT services\Tunnelkey"
+                       Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+
+      <Component Id="TunnelkeyLicense" Bitness="always64">
+        <File Id="LicenseTxt" Source="$(var.LicenseTxt)" Name="LICENSE.txt" KeyPath="yes" />
+      </Component>
+
+    </ComponentGroup>
+  </Fragment>
+</Wix>

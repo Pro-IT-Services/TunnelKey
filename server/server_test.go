@@ -1,8 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -157,5 +163,108 @@ func TestPasswordHash(t *testing.T) {
 	}
 	if !checkPassword(h, "correct horse battery") || checkPassword(h, "wrong") {
 		t.Error("password check broken")
+	}
+}
+
+func TestSetupFileRoundTrip(t *testing.T) {
+	want := buildPayload(testPackage(500))
+	text, err := encryptSetupFile(want, "correct-horse-battery-staple-07")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := decryptSetupFile(text, "correct-horse-battery-staple-07")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round trip mismatch: %+v", got)
+	}
+	if _, err := decryptSetupFile(text, "correct-horse-battery-staple-08"); err == nil {
+		t.Error("wrong password should fail")
+	}
+	// iter is bound by the AAD; out-of-range values are rejected up front.
+	for _, iter := range []string{"100000", "99999", "10000001"} {
+		tampered := bytes.Replace(text, []byte(`"iter": 600000`), []byte(`"iter": `+iter), 1)
+		if _, err := decryptSetupFile(tampered, "correct-horse-battery-staple-07"); err == nil {
+			t.Errorf("iter %s should fail", iter)
+		}
+	}
+}
+
+// The fixture was written by the browser implementation (docs/provision/core.js),
+// so this proves the JavaScript and Go code agree on the format.
+func TestSetupFileFromJS(t *testing.T) {
+	text, err := os.ReadFile("testdata/setup_v1.tunnelkey")
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := decryptSetupFile(text, "correct-horse-battery-staple-07")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.Name != "Office VPN" || p.Password != "pässwörd" || p.TOTP == nil || p.TOTP.Secret != "JBSWY3DPEHPK3PXP" ||
+		p.CodePosition != "a" || len(p.Links) != 2 || !strings.Contains(p.OVPN, "remote vpn.example.com 1194") {
+		t.Errorf("unexpected payload %+v", p)
+	}
+	if p.Links[1].URI != "rdp://full%20address=s:10.0.0.5:3389&username=s:CORP%5Cmarko" {
+		t.Errorf("rdp uri = %s", p.Links[1].URI)
+	}
+}
+
+func TestPayloadEndpoint(t *testing.T) {
+	store, err := openStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { store.db.Close() })
+	hash, _ := hashPassword("correct horse battery")
+	if err := store.upsertAdmin("admin", hash); err != nil {
+		t.Fatal(err)
+	}
+	adminID, _, err := store.adminByName("admin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := store.createSession(adminID, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := testPackage(500)
+	p.ID = "pkg1"
+	if err := store.savePackage(p); err != nil {
+		t.Fatal(err)
+	}
+	srv := &Server{store: store, limiter: &loginLimiter{failures: map[string][]time.Time{}}}
+	h := srv.routes(http.NotFoundHandler())
+
+	get := func(path string, signedIn bool) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		if signedIn {
+			req.AddCookie(&http.Cookie{Name: sessionCookie, Value: token})
+		}
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := get("/api/packages/pkg1/payload", false); rec.Code != http.StatusUnauthorized {
+		t.Errorf("without session: %d, want 401", rec.Code)
+	}
+	if rec := get("/api/packages/nope/payload", true); rec.Code != http.StatusNotFound {
+		t.Errorf("unknown package: %d, want 404", rec.Code)
+	}
+	rec := get("/api/packages/pkg1/payload", true)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body)
+	}
+	if rec.Header().Get("Cache-Control") != "no-store" {
+		t.Errorf("Cache-Control = %q", rec.Header().Get("Cache-Control"))
+	}
+	var got payload
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if want := buildPayload(p); !reflect.DeepEqual(got, want) {
+		t.Errorf("payload mismatch:\n got %+v\nwant %+v", got, want)
 	}
 }

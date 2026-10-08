@@ -114,6 +114,12 @@ photographs one gets that VPN access, including the 2FA secret. Show codes only
 to their owner and delete the package once the phone is set up. The format is
 documented in [docs/provisioning-format.md](docs/provisioning-format.md).
 
+**Desktop setup file:** both setup pages can also download a `.tunnelkey`
+file for Tunnelkey on Windows, macOS and Linux — the same configuration,
+encrypted in the browser with a password you choose or generate (PBKDF2-SHA256 +
+AES-256-GCM; the password never reaches the server). Send the file and the
+password through different channels.
+
 ## App lock
 
 A configuration that includes a password or TOTP secret must be locked:

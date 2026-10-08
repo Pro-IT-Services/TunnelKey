@@ -3,9 +3,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
-  base45Decode, base45Encode, buildPayload, decodeSetupCodes, encodeSetupCodes,
-  linkUri, parseOtpauth, totpCode, validatePackage,
+  PASSPHRASE_WORDS, SETUP_FILE_ITER, base45Decode, base45Encode, base64urlDecode, buildPayload,
+  decodeSetupCodes, decryptSetupFile, encodeSetupCodes, encryptSetupFile, generatePassphrase,
+  linkUri, parseOtpauth, totpCode, validatePackage, zlibDecompress,
 } from "../core.js";
+import * as serverWeb from "../../../server/web/setupfile.js";
 
 const fixture = (p) => new URL(p, import.meta.url);
 
@@ -103,4 +105,109 @@ test("reads a code produced by the Go server", async () => {
   assert.equal(p.n, "Office VPN");
   assert.equal(p.t.s, "JBSWY3DPEHPK3PXP");
   assert.equal(p.l.length, 2);
+});
+
+// ---------------------------------------------------------------- setup file (desktop)
+
+const FILE_PASSWORD = "maple-otter-guitar-frost-pebble-42";
+
+test("setup file: format and round trip", async () => {
+  const payload = buildPayload(samplePackage(400));
+  const text = await encryptSetupFile(payload, FILE_PASSWORD);
+  assert.ok(text.endsWith("}\n"));
+  const f = JSON.parse(text);
+  assert.deepEqual(Object.keys(f), ["tunnelkey", "v", "kdf", "enc", "data"]);
+  assert.equal(f.tunnelkey, "setup-file");
+  assert.equal(f.v, 1);
+  assert.deepEqual(Object.keys(f.kdf), ["alg", "iter", "salt"]);
+  assert.equal(f.kdf.alg, "PBKDF2-SHA256");
+  assert.equal(f.kdf.iter, SETUP_FILE_ITER);
+  assert.equal(f.enc.alg, "A256GCM");
+  for (const v of [f.kdf.salt, f.enc.iv, f.data]) assert.match(v, /^[A-Za-z0-9_-]+$/); // base64url, no padding
+  assert.equal(base64urlDecode(f.kdf.salt).length, 16);
+  assert.equal(base64urlDecode(f.enc.iv).length, 12);
+  assert.ok(base64urlDecode(f.data).length > 16);
+  assert.deepEqual(await decryptSetupFile(text, FILE_PASSWORD), payload);
+  // Fresh salt and IV every time.
+  const again = JSON.parse(await encryptSetupFile(payload, FILE_PASSWORD));
+  assert.notEqual(again.kdf.salt, f.kdf.salt);
+  assert.notEqual(again.enc.iv, f.enc.iv);
+});
+
+test("setup file: wrong password and tampering fail", async () => {
+  const text = await encryptSetupFile(buildPayload(samplePackage(200)), FILE_PASSWORD);
+  await assert.rejects(decryptSetupFile(text, FILE_PASSWORD + "x"), /Wrong password/);
+  const edit = (fn) => { const f = JSON.parse(text); fn(f); return JSON.stringify(f); };
+  // iter is bound by the AAD: a valid but different count must not decrypt.
+  await assert.rejects(decryptSetupFile(edit((f) => { f.kdf.iter = 100000; }), FILE_PASSWORD), /Wrong password/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.kdf.iter = 99999; }), FILE_PASSWORD), /iteration count/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.kdf.iter = 10000001; }), FILE_PASSWORD), /iteration count/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.kdf.iter = "600000"; }), FILE_PASSWORD), /iteration count/);
+  const flip = (s) => (s[0] === "A" ? "B" : "A") + s.slice(1);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.kdf.salt = flip(f.kdf.salt); }), FILE_PASSWORD), /Wrong password/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.enc.iv = flip(f.enc.iv); }), FILE_PASSWORD), /Wrong password/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.data = flip(f.data); }), FILE_PASSWORD), /Wrong password/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.kdf.salt += "=="; }), FILE_PASSWORD), /base64url/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.enc.iv = f.kdf.salt; }), FILE_PASSWORD), /length/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.v = 2; }), FILE_PASSWORD), /version/);
+  await assert.rejects(decryptSetupFile(edit((f) => { f.enc.alg = "A128GCM"; }), FILE_PASSWORD), /Unsupported/);
+  await assert.rejects(decryptSetupFile("TK1:1/1:ABCDEF:3:BB8", FILE_PASSWORD), /Not a Tunnelkey setup file/);
+});
+
+test("setup file: password rules and NFC", async () => {
+  const payload = buildPayload({ name: "X", ovpn: "client\nremote a 1194\n" });
+  await assert.rejects(encryptSetupFile(payload, "short-pw1"), /at least 10/);
+  const composed = "Caf\u00e9-Kr\u00e4mer-2024";
+  const decomposed = "Cafe\u0301-Kra\u0308mer-2024";
+  const text = await encryptSetupFile(payload, composed);
+  assert.deepEqual(await decryptSetupFile(text, decomposed), payload);
+});
+
+test("setup file: plaintext is zlib(JSON payload)", async () => {
+  // Decrypt by hand to check the layering, not just the round trip.
+  const payload = buildPayload({ name: "X", ovpn: "client\nremote a 1194\n" });
+  const f = JSON.parse(await encryptSetupFile(payload, FILE_PASSWORD));
+  const pw = await crypto.subtle.importKey("raw", new TextEncoder().encode(FILE_PASSWORD), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: base64urlDecode(f.kdf.salt), iterations: f.kdf.iter }, pw, 256);
+  const key = await crypto.subtle.importKey("raw", bits, "AES-GCM", false, ["decrypt"]);
+  const aad = new TextEncoder().encode(`tunnelkey-setup-file:1:${f.kdf.iter}:${f.kdf.salt}:${f.enc.iv}`);
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: base64urlDecode(f.enc.iv), additionalData: aad }, key, base64urlDecode(f.data));
+  const json = new TextDecoder().decode(await zlibDecompress(new Uint8Array(plain)));
+  assert.equal(json, JSON.stringify(payload));
+});
+
+test("passphrases", () => {
+  assert.equal(PASSPHRASE_WORDS.length, 256);
+  assert.equal(new Set(PASSPHRASE_WORDS).size, 256);
+  for (const w of PASSPHRASE_WORDS) assert.match(w, /^[a-z]{3,8}$/);
+  // 5 words × 8 bits + log2(100) for the digits.
+  assert.ok(5 * Math.log2(PASSPHRASE_WORDS.length) + Math.log2(100) >= 45);
+  const seen = new Set();
+  for (let i = 0; i < 50; i++) {
+    const p = generatePassphrase();
+    const parts = p.split("-");
+    assert.equal(parts.length, 6);
+    for (const w of parts.slice(0, 5)) assert.ok(PASSPHRASE_WORDS.includes(w), w);
+    assert.match(parts[5], /^\d\d$/);
+    assert.ok(p.length >= 10);
+    seen.add(p);
+  }
+  assert.equal(seen.size, 50);
+});
+
+test("server web UI copy agrees with this one", async () => {
+  assert.deepEqual(serverWeb.PASSPHRASE_WORDS, PASSPHRASE_WORDS);
+  const payload = buildPayload(samplePackage(300));
+  assert.deepEqual(await decryptSetupFile(await serverWeb.encryptSetupFile(payload, FILE_PASSWORD), FILE_PASSWORD), payload);
+  assert.deepEqual(await serverWeb.decryptSetupFile(await encryptSetupFile(payload, FILE_PASSWORD), FILE_PASSWORD), payload);
+});
+
+test("reads the setup file fixture shared with the Go tests", async () => {
+  // server/testdata/setup_v1.tunnelkey, written once by this implementation.
+  const text = readFileSync(fixture("../../../server/testdata/setup_v1.tunnelkey"), "utf8");
+  const p = await decryptSetupFile(text, "correct-horse-battery-staple-07");
+  assert.equal(p.n, "Office VPN");
+  assert.equal(p.p, "pässwörd");
+  assert.equal(p.t.s, "JBSWY3DPEHPK3PXP");
+  assert.equal(p.l[1].u, "rdp://full%20address=s:10.0.0.5:3389&username=s:CORP%5Cmarko");
 });

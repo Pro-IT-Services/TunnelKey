@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "Tunnelkey",
+  "outputfilename": "Tunnelkey",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "ProIT services",
+    "email": "develop@pro-it.sk"
+  },
+  "info": {
+    "companyName": "ProIT services",
+    "productName": "Tunnelkey",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026 ProIT services. AGPL-3.0.",
+    "comments": "OpenVPN client with two-factor sign-in"
+  }
+}

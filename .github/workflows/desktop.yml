@@ -1,0 +1,137 @@
+name: desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: read
+
+env:
+  WAILS_VERSION: v2.12.0
+  WIX_VERSION: 4.0.6
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: go vet / go test
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Install Wails and WiX
+        shell: pwsh
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+          dotnet tool install --global wix --version ${{ env.WIX_VERSION }}
+          wix extension add -g WixToolset.UI.wixext/${{ env.WIX_VERSION }}
+          wix extension add -g WixToolset.Util.wixext/${{ env.WIX_VERSION }}
+          wix extension add -g WixToolset.Bal.wixext/${{ env.WIX_VERSION }}
+
+      - name: Build installers
+        shell: powershell
+        run: .\scripts\build-windows.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tunnelkey-windows
+          path: |
+            desktop/build/out/*.msi
+            desktop/build/out/*-setup.exe
+            desktop/build/out/SHA256SUMS.txt
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: go vet / go test
+        run: |
+          go vet -tags webkit2_41 ./...
+          go test -tags webkit2_41 ./...
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build packages
+        run: bash scripts/build-linux.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tunnelkey-linux
+          path: |
+            desktop/build/out/*.deb
+            desktop/build/out/*.rpm
+            desktop/build/out/SHA256SUMS-linux.txt
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: desktop/go.mod
+          cache-dependency-path: desktop/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: go vet / go test
+        run: |
+          go vet ./...
+          go test ./...
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build package (unsigned)
+        run: bash scripts/build-macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tunnelkey-macos
+          path: |
+            desktop/build/out/*.pkg
+            desktop/build/out/SHA256SUMS-macos.txt
+          if-no-files-found: error

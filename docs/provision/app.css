@@ -387,6 +387,16 @@ details.raw textarea { margin-top: 10px; min-height: 220px; }
 .cycle-label { position: absolute; top: 24px; left: 0; right: 0; text-align: center; color: #333; font: 700 18px/1 var(--mono); }
 .cycle-close { position: absolute; top: 16px; right: 16px; background: #111; color: #fff; }
 
+/* Desktop setup file */
+.pass-wrap { position: relative; }
+.pass-wrap input { padding-right: 48px; }
+.pass-wrap .icon-btn { position: absolute; top: 4px; right: 4px; }
+.passphrase { margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--canvas); border: 1px dashed var(--line); overflow-wrap: anywhere; user-select: all; }
+.passphrase[hidden] { display: none; }
+.pass-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.btn.block { width: 100%; }
+.desktop .hint { margin-top: 10px; }
+
 .steps-list { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; }
 .steps-list li + li { margin-top: 6px; }
 

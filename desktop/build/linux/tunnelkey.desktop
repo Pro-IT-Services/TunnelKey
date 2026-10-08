@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Tunnelkey
+GenericName=VPN client
+Comment=OpenVPN client with two-factor sign-in
+Exec=tunnelkey %f
+Icon=tunnelkey
+Terminal=false
+Categories=Network;Security;
+Keywords=VPN;OpenVPN;2FA;TOTP;
+MimeType=application/vnd.tunnelkey.setup+json;application/x-openvpn-profile;
+StartupWMClass=Tunnelkey

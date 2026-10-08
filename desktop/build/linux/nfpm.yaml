@@ -1,0 +1,97 @@
+# nfpm config for the Tunnelkey .deb and .rpm (https://nfpm.goreleaser.com).
+# Used by desktop/scripts/build-linux.sh, which runs nfpm from desktop/ and
+# exports VERSION and ARCH (Go arch names: amd64, arm64).
+name: tunnelkey
+arch: ${ARCH}
+platform: linux
+version: ${VERSION}
+release: 1
+section: net
+priority: optional
+maintainer: ProIT services <develop@pro-it.sk>
+vendor: ProIT services
+homepage: https://github.com/kalipsers/TunnelKey
+license: AGPL-3.0-only
+description: |-
+  OpenVPN client with two-factor sign-in.
+  Tunnelkey imports encrypted .tunnelkey setup files and OpenVPN profiles,
+  stores secrets locally and connects through the system OpenVPN 2.5+
+  using a small privileged helper service (tunnelkey-helper.service).
+
+contents:
+  - src: ./build/bin/Tunnelkey
+    dst: /usr/bin/tunnelkey
+    file_info:
+      mode: 0755
+  - src: ./build/bin/tunnelkey-helper
+    dst: /usr/lib/tunnelkey/tunnelkey-helper
+    file_info:
+      mode: 0755
+  - src: ./build/linux/tunnelkey-helper.service
+    dst: /usr/lib/systemd/system/tunnelkey-helper.service
+    file_info:
+      mode: 0644
+  - src: ./build/linux/tunnelkey.desktop
+    dst: /usr/share/applications/tunnelkey.desktop
+    file_info:
+      mode: 0644
+  - src: ./build/linux/tunnelkey-mime.xml
+    dst: /usr/share/mime/packages/tunnelkey.xml
+    file_info:
+      mode: 0644
+  - src: ./build/linux/icons/hicolor/32x32/apps/tunnelkey.png
+    dst: /usr/share/icons/hicolor/32x32/apps/tunnelkey.png
+    file_info: {mode: 0644}
+  - src: ./build/linux/icons/hicolor/48x48/apps/tunnelkey.png
+    dst: /usr/share/icons/hicolor/48x48/apps/tunnelkey.png
+    file_info: {mode: 0644}
+  - src: ./build/linux/icons/hicolor/64x64/apps/tunnelkey.png
+    dst: /usr/share/icons/hicolor/64x64/apps/tunnelkey.png
+    file_info: {mode: 0644}
+  - src: ./build/linux/icons/hicolor/128x128/apps/tunnelkey.png
+    dst: /usr/share/icons/hicolor/128x128/apps/tunnelkey.png
+    file_info: {mode: 0644}
+  - src: ./build/linux/icons/hicolor/256x256/apps/tunnelkey.png
+    dst: /usr/share/icons/hicolor/256x256/apps/tunnelkey.png
+    file_info: {mode: 0644}
+  - src: ./build/linux/icons/hicolor/512x512/apps/tunnelkey.png
+    dst: /usr/share/icons/hicolor/512x512/apps/tunnelkey.png
+    file_info: {mode: 0644}
+  - src: ../LICENSE
+    dst: /usr/share/doc/tunnelkey/copyright
+    packager: deb
+    file_info: {mode: 0644}
+  - src: ../LICENSE
+    dst: /usr/share/licenses/tunnelkey/LICENSE
+    packager: rpm
+    file_info: {mode: 0644}
+    type: license
+
+scripts:
+  postinstall: ./build/linux/scripts/postinstall.sh
+  preremove: ./build/linux/scripts/preremove.sh
+  postremove: ./build/linux/scripts/postremove.sh
+
+overrides:
+  deb:
+    depends:
+      - openvpn (>= 2.5)
+      - libwebkit2gtk-4.1-0
+      - libgtk-3-0t64 | libgtk-3-0
+    recommends:
+      - systemd-resolved
+  rpm:
+    depends:
+      - openvpn >= 2.5
+      - webkit2gtk4.1
+      - gtk3
+    recommends:
+      - systemd-resolved
+
+rpm:
+  group: Applications/Internet
+  summary: OpenVPN client with two-factor sign-in
+  compression: xz
+
+deb:
+  compression: xz

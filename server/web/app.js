@@ -1,6 +1,10 @@
 // Tunnelkey Provisioning — dependency-free admin UI.
 // All DOM is built with h(); user data is only ever set as text, never HTML.
 
+import {
+  SETUP_FILE_MIN_PASSWORD, SETUP_FILE_TYPE, encryptSetupFile, generatePassphrase,
+} from "./setupfile.js";
+
 const app = document.getElementById("app");
 
 // ---------------------------------------------------------------- helpers
@@ -39,6 +43,11 @@ const ICONS = {
   play: ["M7 4l13 8-13 8z"],
   print: ["M6 9V3h12v6", "M6 18H3v-8h18v8h-3", "M6 14h12v7H6z"],
   back: ["M19 12H5", "M11 6l-6 6 6 6"],
+  download: ["M12 4v11", "M7 10l5 5 5-5", "M5 20h14"],
+  key: ["M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M11 12l9-9", "M17 6l3 3", "M15 8l2 2"],
+  copy: ["M9 9h11v11H9z", "M5 15H4V4h11v1"],
+  eye: ["M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
+  eyeOff: ["M3 3l18 18", "M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2", "M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.5-.6 4.9-1.4", "M9.9 9.9a3 3 0 0 0 4.2 4.2"],
 };
 
 function icon(name) {
@@ -90,6 +99,17 @@ function toast(message) {
 function banner(kind, text) {
   return h("div", { class: `banner ${kind}` }, icon(kind === "ok" ? "check" : "warn"), h("div", { text }));
 }
+
+function download(filename, blob) {
+  const url = URL.createObjectURL(blob);
+  const a = h("a", { href: url, download: filename });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const slug = (s) => (s || "tunnelkey").normalize("NFKD").replace(/[^\w.-]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "tunnelkey";
 
 function timeAgo(iso) {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -631,6 +651,8 @@ async function renderCodes(id) {
             h("li", { text: multi ? `Point the camera at each code — any order. The app shows which of the ${codes.length} are still missing.` : "Point the camera at the code." }),
             h("li", { text: pkg.totp ? "Protect it with fingerprint / Face ID or an 8-digit PIN (required, because the 2FA secret is stored)." : "Optionally protect it with fingerprint / Face ID or a PIN." }),
             h("li", { text: "Tap Connect." }))),
+        // The payload is fetched only when the file is made; the password stays in the browser.
+        desktopCard(pkg.name, () => api("GET", `/api/packages/${id}/payload`)),
         h("div", { class: "card" },
           banner("warn", "These codes are not encrypted. Anyone who sees or photographs them gets this VPN access" + (pkg.totp ? ", including the 2FA secret." : ".")),
           h("div", { class: "field" }),
@@ -644,4 +666,89 @@ async function renderCodes(id) {
               location.hash = "#/";
             },
           })))));
+}
+
+// ---------------------------------------------------------------- desktop setup file
+
+/** Card for Tunnelkey on Windows, macOS and Linux: an encrypted setup file,
+ *  encrypted in this browser. getPayload() resolves to the setup-code payload. */
+function desktopCard(name, getPayload) {
+  const min = SETUP_FILE_MIN_PASSWORD;
+  const pass = h("input", {
+    type: "password", id: "file-pass", class: "mono", autocomplete: "new-password", spellcheck: false,
+    placeholder: `At least ${min} characters`, oninput: () => { generated.hidden = true; refresh(); },
+  });
+  const toggle = h("button", { class: "icon-btn", type: "button", onclick: () => setShown(pass.type === "password") });
+  const generate = h("button", {
+    class: "btn ghost small", type: "button",
+    onclick: () => {
+      pass.value = generatePassphrase();
+      generated.textContent = pass.value; // full width, so it can be read out or copied
+      generated.hidden = false;
+      setShown(true);
+      refresh();
+      pass.select();
+    },
+  }, icon("key"), "Generate");
+  const copy = h("button", {
+    class: "btn ghost small", type: "button",
+    onclick: async () => {
+      try {
+        await navigator.clipboard.writeText(pass.value);
+        toast("Password copied");
+      } catch {
+        setShown(true);
+        pass.select();
+        toast("Press Ctrl+C (⌘C) to copy");
+      }
+    },
+  }, icon("copy"), "Copy");
+  const generated = h("div", { class: "passphrase mono", hidden: true });
+  const count = h("div", { class: "hint" });
+  const status = h("div");
+  const save = h("button", { class: "btn primary block", type: "button", onclick: saveFile }, icon("download"), "Download setup file");
+
+  function setShown(show) {
+    pass.type = show ? "text" : "password";
+    const label = show ? "Hide password" : "Show password";
+    toggle.title = label;
+    toggle.setAttribute("aria-label", label);
+    toggle.setAttribute("aria-pressed", String(show));
+    toggle.replaceChildren(icon(show ? "eyeOff" : "eye"));
+  }
+
+  function refresh() {
+    const n = [...pass.value.normalize("NFC")].length;
+    save.disabled = n < min;
+    copy.disabled = !pass.value;
+    count.textContent = n < min ? `${min - n} more character${min - n === 1 ? "" : "s"} needed.` : "Long enough.";
+  }
+
+  async function saveFile() {
+    save.disabled = true;
+    status.replaceChildren(h("p", { class: "muted", text: "Encrypting…" }));
+    try {
+      const text = await encryptSetupFile(await getPayload(), pass.value);
+      download(`${slug(name)}.tunnelkey`, new Blob([text], { type: SETUP_FILE_TYPE }));
+      status.replaceChildren();
+    } catch (err) {
+      status.replaceChildren(h("div", { class: "field" }, banner("error", err.message)));
+    }
+    refresh();
+  }
+
+  setShown(false);
+  refresh();
+  return h("div", { class: "card desktop" },
+    h("h3", { text: "Desktop (Windows, macOS, Linux)" }),
+    h("p", { class: "muted", text: "Download an encrypted setup file and open it with Tunnelkey on the computer. It asks for this password." }),
+    h("div", { class: "field" },
+      h("label", { for: "file-pass", text: "File password" }),
+      h("div", { class: "pass-wrap" }, pass, toggle),
+      generated,
+      count,
+      h("div", { class: "pass-actions" }, generate, copy)),
+    status,
+    save,
+    h("p", { class: "hint", text: "Send the file and the password through different channels." }));
 }
