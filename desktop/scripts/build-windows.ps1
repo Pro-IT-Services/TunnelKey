@@ -308,6 +308,95 @@ if ($SignEnabled) {
     Sign-File $setup
 }
 
+# --- Group Policy package --------------------------------------------------------
+# GPO software installation deploys MSIs + transforms only (no setup.exe, no
+# command-line properties), so everything setup.exe passes is baked into
+# transforms here:
+#   openvpn-gpo.mst   - core + drivers only (feature levels and INSTALLLEVEL=1)
+#   tunnelkey-gpo.mst - SKIPOPENVPNCHECK=1, so the two packages may install in
+#                       either order (the app finds OpenVPN when connecting)
+function New-Transform([string]$sourceMsi, [string]$mst, [string[]]$sql) {
+    $work = Join-Path $ObjDir ('transform-work-' + [IO.Path]::GetFileName($sourceMsi))
+    Copy-Item $sourceMsi $work -Force
+    Set-ItemProperty $work -Name IsReadOnly -Value $false
+    $ref = Invoke-Com $installer 'OpenDatabase' 'InvokeMethod' @($sourceMsi, 0)
+    $db = Invoke-Com $installer 'OpenDatabase' 'InvokeMethod' @($work, 1)
+    foreach ($q in $sql) {
+        $view = Invoke-Com $db 'OpenView' 'InvokeMethod' @($q)
+        [void](Invoke-Com $view 'Execute' 'InvokeMethod' $null)
+        [void](Invoke-Com $view 'Close' 'InvokeMethod' $null)
+    }
+    [void](Invoke-Com $db 'Commit' 'InvokeMethod' $null)
+    if (Test-Path $mst) { Remove-Item $mst -Force }
+    [void](Invoke-Com $db 'GenerateTransform' 'InvokeMethod' @($ref, $mst))
+    [void](Invoke-Com $db 'CreateTransformSummaryInfo' 'InvokeMethod' @($ref, $mst, 0, 0))
+    $db = $null; $ref = $null; $view = $null
+    [System.GC]::Collect(); [System.GC]::WaitForPendingFinalizers()
+    Remove-Item $work -Force -ErrorAction SilentlyContinue
+}
+function Set-PropertySql($db, [string]$name, [string]$value) {
+    if ($null -eq (Get-MsiValue $db "SELECT Value FROM Property WHERE Property = '$name'")) {
+        return "INSERT INTO Property (Property, Value) VALUES ('$name', '$value')"
+    }
+    return "UPDATE Property SET Value = '$value' WHERE Property = '$name'"
+}
+
+$GpoDir = Join-Path $OutDir 'gpo'
+if (Test-Path $GpoDir) { Remove-Item $GpoDir -Recurse -Force }
+New-Item -ItemType Directory -Path $GpoDir | Out-Null
+$gpoOpenVPNMsi = Join-Path $GpoDir $OpenVPNMsiName
+$gpoTunnelkeyMsi = Join-Path $GpoDir (Split-Path -Leaf $msi)
+Copy-Item $ovpnMsi $gpoOpenVPNMsi -Force
+Copy-Item $msi $gpoTunnelkeyMsi -Force
+
+$ovpnRef = Invoke-Com $installer 'OpenDatabase' 'InvokeMethod' @($ovpnMsi, 0)
+$ovpnLevelSql = Set-PropertySql $ovpnRef 'INSTALLLEVEL' '1'
+$ovpnRef = $null
+New-Transform $ovpnMsi (Join-Path $GpoDir 'openvpn-gpo.mst') @(
+    "UPDATE Feature SET Level = 1 WHERE Feature = 'OpenVPN'",
+    $ovpnLevelSql
+)
+$tkRef = Invoke-Com $installer 'OpenDatabase' 'InvokeMethod' @($msi, 0)
+$tkSkipSql = Set-PropertySql $tkRef 'SKIPOPENVPNCHECK' '1'
+$tkRef = $null
+New-Transform $msi (Join-Path $GpoDir 'tunnelkey-gpo.mst') @($tkSkipSql)
+
+$gpoReadme = @"
+Tunnelkey $Version - Group Policy deployment
+=============================================
+
+Copy this folder to a share that domain computers can read (UNC path, e.g.
+\\fileserver\deploy\Tunnelkey\). In Group Policy Management, edit a GPO linked
+to the computers' OU:
+
+Computer Configuration > Policies > Software Settings > Software installation
+  > New > Package...
+
+1. $OpenVPNMsiName
+   Deployment method: Advanced. Modifications tab > Add > openvpn-gpo.mst
+   (installs only the OpenVPN core and its network drivers, without the
+   OpenVPN GUI).
+
+2. $(Split-Path -Leaf $gpoTunnelkeyMsi)
+   Deployment method: Advanced. Modifications tab > Add > tunnelkey-gpo.mst
+   (lets it install before OpenVPN; the app finds OpenVPN when connecting).
+
+Both packages are per-machine and install at the next restart. Transforms can
+only be added when a package is created, not later.
+
+Updates: add the new Tunnelkey MSI as a package and, on its Upgrades tab,
+mark it as upgrading the previous Tunnelkey package. OpenVPN only needs a new
+package when Tunnelkey ships a newer OpenVPN.
+
+Silent install without Group Policy (e.g. Intune, SCCM, scripts):
+  Tunnelkey-$Version-setup.exe /quiet /norestart
+or the two MSIs:
+  msiexec /i $OpenVPNMsiName TRANSFORMS=openvpn-gpo.mst /qn /norestart
+  msiexec /i $(Split-Path -Leaf $gpoTunnelkeyMsi) /qn /norestart
+"@
+Set-Content -Path (Join-Path $GpoDir 'README-GPO.txt') -Value $gpoReadme -Encoding UTF8
+Step "Group Policy package -> $GpoDir"
+
 # --- summary -------------------------------------------------------------------
 $sums = Join-Path $OutDir 'SHA256SUMS.txt'
 $lines = foreach ($f in @($msi, $setup)) {

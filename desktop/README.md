@@ -163,6 +163,32 @@ shared 1024 px app icon in `ios/`.
 
 Uninstalling never deletes the per-user data below.
 
+## Deploying with Group Policy
+
+Group Policy software installation only deploys MSI packages and transforms, so
+`scripts/build-windows.ps1` also writes `build\out\gpo\`:
+
+| File | Purpose |
+|------|---------|
+| `OpenVPN-2.6.x-amd64.msi` | The official, signed OpenVPN MSI (unchanged) |
+| `openvpn-gpo.mst` | Installs only the OpenVPN core and its drivers (ovpn-dco on Windows 10 2004+, Wintun, TAP), no OpenVPN GUI |
+| `Tunnelkey-<ver>-x64.msi` | Tunnelkey |
+| `tunnelkey-gpo.mst` | Sets `SKIPOPENVPNCHECK=1`, so the packages may install in either order |
+| `README-GPO.txt` | Step-by-step instructions |
+
+1. Copy the folder to a share the computers can read (UNC path).
+2. In a GPO linked to the computers' OU: *Computer Configuration → Policies →
+   Software Settings → Software installation → New → Package*.
+3. Add the OpenVPN MSI with **Advanced** deployment and `openvpn-gpo.mst` on the
+   *Modifications* tab; then the Tunnelkey MSI with `tunnelkey-gpo.mst`.
+   Transforms can only be added when the package is created.
+4. Computers install both at the next restart. For updates, add the new
+   Tunnelkey MSI and mark it as upgrading the previous package (*Upgrades* tab).
+
+On its own (without the transform) the Tunnelkey MSI refuses to install when
+OpenVPN is missing and points to `Tunnelkey-<ver>-setup.exe`. For Intune, SCCM
+or scripts, `Tunnelkey-<ver>-setup.exe /quiet /norestart` installs both.
+
 ## Where data is stored
 
 Per user (profiles, sealed secrets, settings):
