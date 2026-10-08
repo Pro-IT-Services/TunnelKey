@@ -11,7 +11,8 @@
 
   OpenVPN 2.6 is NOT part of this MSI. Tunnelkey-<ver>-setup.exe (Bundle.wxs)
   chains the official OpenVPN MSI in front of it; when this MSI is installed
-  on its own, OpenVPN must already be present.
+  on its own, OpenVPN must already be present, or the install stops with a
+  message. Deployments that add OpenVPN later can pass SKIPOPENVPNCHECK=1.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
@@ -41,6 +42,13 @@
     <Property Id="ARPCOMMENTS" Value="OpenVPN client with two-factor sign-in. Licensed under AGPL-3.0." />
 
     <Launch Condition="VersionNT64" Message="Tunnelkey requires 64-bit Windows." />
+
+    <!-- Without OpenVPN the app can't connect: point people to setup.exe. -->
+    <Property Id="OPENVPNEXE">
+      <RegistrySearch Root="HKLM" Key="SOFTWARE\OpenVPN" Name="exe_path" Type="raw" Bitness="always64" />
+    </Property>
+    <Launch Condition="Installed OR REMOVE OR OPENVPNEXE OR SKIPOPENVPNCHECK=&quot;1&quot;"
+            Message="OpenVPN 2.6 is not installed. Install Tunnelkey with Tunnelkey-[ProductVersion]-setup.exe, which adds OpenVPN for you, or install OpenVPN 2.6 from openvpn.net first." />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="Tunnelkey" />
