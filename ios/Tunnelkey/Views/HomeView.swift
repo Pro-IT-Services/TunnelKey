@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 struct HomeView: View {
     @EnvironmentObject private var store: ProfileStore
     @EnvironmentObject private var vpn: VPNController
+    @EnvironmentObject private var files: FileRouter
     @AppStorage("selectedProfile") private var selectedRaw = ""
 
     @State private var showImporter = false
@@ -93,10 +94,12 @@ struct HomeView: View {
                 if !profiles.isEmpty { connectBar }
             }
         }
-        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.ovpnProfile, .data]) { result in
-            if case let .success(url) = result { importProfile(url) }
+        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.ovpnProfile, .tunnelkeySetup, .data]) { result in
+            // Setup files go to the setup flow, everything else to the profile editor.
+            if case let .success(url) = result { files.open(url, acceptsProfiles: true) }
         }
-        .onOpenURL(perform: importProfile)
+        .onAppear(perform: takeOpenedProfile)
+        .onChange(of: files.profileURL) { _ in takeOpenedProfile() }
         .sheet(item: $editor) { form in
             EditorView(form: form, onSave: save, onDelete: delete)
         }
@@ -111,11 +114,7 @@ struct HomeView: View {
         .alert("Couldn't import profile", isPresented: Binding(get: { importError != nil }, set: { if !$0 { importError = nil } }), presenting: importError) { _ in
             Button("OK") { importError = nil }
         } message: { Text($0) }
-        .alert("Tunnelkey", isPresented: $showAbout) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Open-source OpenVPN client with authenticator-code support.\n\nLicensed under the GNU AGPL v3. Built on OpenVPNAdapter and the OpenVPN 3 core.")
-        }
+        .sheet(isPresented: $showAbout) { AboutView() }
     }
 
     // MARK: - Pieces
@@ -138,6 +137,12 @@ struct HomeView: View {
                 showScanner = true
             } label: {
                 Label("Scan setup code", systemImage: "qrcode.viewfinder")
+            }
+            .buttonStyle(PrimaryButtonStyle(prominent: false))
+            Button {
+                showImporter = true
+            } label: {
+                Label("Open setup file", systemImage: "doc.badge.gearshape")
             }
             .buttonStyle(PrimaryButtonStyle(prominent: false))
         }
@@ -190,6 +195,13 @@ struct HomeView: View {
             needsCode: needsCode,
             usesStaticChallenge: usesStaticChallenge
         )
+    }
+
+    /// An .ovpn file opened from another app or picked in the importer.
+    private func takeOpenedProfile() {
+        guard let url = files.profileURL else { return }
+        files.profileURL = nil
+        importProfile(url)
     }
 
     private func importProfile(_ url: URL) {

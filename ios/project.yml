@@ -62,7 +62,12 @@ targets:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - TunnelkeyTests
+      - path: TunnelkeyTests
+        excludes:
+          - "*.tunnelkey"
+      # Shared test vector (copy of server/testdata/setup_v1.tunnelkey).
+      - path: TunnelkeyTests/setup_v1.tunnelkey
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.tunnelkey.tests

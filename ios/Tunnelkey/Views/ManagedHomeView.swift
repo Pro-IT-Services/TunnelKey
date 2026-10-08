@@ -10,6 +10,7 @@ struct ManagedHomeView: View {
     @State private var signIn: SignInRequest?
     @State private var showLog = false
     @State private var showSecurity = false
+    @State private var showAbout = false
     @State private var confirmRemove = false
     @State private var pendingLink: SetupLink?
     @State private var hint: String?
@@ -73,6 +74,9 @@ struct ManagedHomeView: View {
                     Button { showSecurity = true } label: { Label("Security", systemImage: "lock") }
                 }
                 ToolbarItem(placement: .secondaryAction) {
+                    Button { showAbout = true } label: { Label("About", systemImage: "info.circle") }
+                }
+                ToolbarItem(placement: .secondaryAction) {
                     Button(role: .destructive) { confirmRemove = true } label: { Label("Remove Configuration", systemImage: "trash") }
                 }
             }
@@ -85,6 +89,7 @@ struct ManagedHomeView: View {
         }
         .sheet(isPresented: $showLog) { LogView() }
         .sheet(isPresented: $showSecurity) { SecurityView() }
+        .sheet(isPresented: $showAbout) { AboutView() }
         .confirmationDialog("Remove “\(config?.name ?? "")”?", isPresented: $confirmRemove, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
                 vpn.disconnect()

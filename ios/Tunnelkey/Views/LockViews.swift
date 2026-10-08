@@ -264,8 +264,11 @@ struct LockView: View {
 
 // MARK: - Setup flow
 
-/// Scan → choose lock → (PIN) → installed.
+/// Scan (or setup file + password) → choose lock → (PIN) → installed.
 struct SetupFlowView: View {
+    /// Set when opening a setup file instead of scanning codes.
+    var file: SetupFileRequest? = nil
+
     @EnvironmentObject private var managed: ManagedController
     @EnvironmentObject private var store: ProfileStore
     @EnvironmentObject private var vpn: VPNController
@@ -280,6 +283,8 @@ struct SetupFlowView: View {
             Group {
                 if let payload {
                     protectView(payload)
+                } else if let file {
+                    SetupFilePasswordView(request: file) { payload = $0 }
                 } else {
                     ScanSetupView { payload = $0 }
                 }
@@ -297,7 +302,7 @@ struct SetupFlowView: View {
     private func protectView(_ p: SetupPayload) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                Text("This setup code contains:").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.muted)
+                Text(file == nil ? "This setup code contains:" : "This setup file contains:").font(.subheadline.weight(.semibold)).foregroundStyle(Palette.muted)
                 included("lock.shield", "VPN profile")
                 if !(p.password ?? "").isEmpty { included("key.horizontal", "Saved password") }
                 if p.totp != nil { included("key", "2FA secret — codes are generated on this phone") }

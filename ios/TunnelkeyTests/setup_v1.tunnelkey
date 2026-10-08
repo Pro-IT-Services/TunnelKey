@@ -1,0 +1,14 @@
+{
+  "tunnelkey": "setup-file",
+  "v": 1,
+  "kdf": {
+    "alg": "PBKDF2-SHA256",
+    "iter": 600000,
+    "salt": "I3KCqNvnU3E0hpibtgBsqA"
+  },
+  "enc": {
+    "alg": "A256GCM",
+    "iv": "eYPQG3zHtaDS6TCK"
+  },
+  "data": "LtbqnFVpRhETqr6JWnyd6GFqbvPwQ2j7_S_MpTZKMlzRwm_UyaMBWB6WCFogp1L5Z23Ol8f_aF0kt1acONg5zY8T9E3UX7ZRNOvRPc-9OqkTUs17HMdpspwF5aKDVi5U0TeV4M3MBiQtTZYSpNOxMbcOxDxu-3PtYothQGkqnSh1IlXNNbSINzO8XeP4ZSqKrCyrG3BCnqEgQtYITIK0ILZv2eKWi-qKY15ot6BNbJHGxztXsrOOdK2sySqP_L8Nz7XirygDCI67g05UUX4ZFzhMr3sp4XsKxbbFrTjlgOVJMXTKZDU4vl3xbXYn4VxxC88ubjnXuz53x3kE5lfQFJbqGZ4sEqr7y9ah8brQ5nhFSR645Zgf3Vd2pAF0ZvHa8ylURyInAqNE-Cf9vdJwRFw-nKrwUlEYaKXr1ZC127LkmKi-AlHyw7KX2fpemmcDjJMMliLyd7ww1fDhQA2go6upJvtb42VB"
+}

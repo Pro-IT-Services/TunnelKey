@@ -126,7 +126,12 @@ enum SetupCodes {
     private static let maxInflated = 512 * 1024
 
     static func decode(_ base45: String) throws -> SetupPayload {
-        let raw = try zlibInflate(try base45Decode(base45))
+        try payload(fromZlib: try base45Decode(base45))
+    }
+
+    /// Inflates and checks the payload. Setup codes and setup files carry the same bytes.
+    static func payload(fromZlib data: Data) throws -> SetupPayload {
+        let raw = try zlibInflate(data)
         let payload: SetupPayload
         do {
             payload = try JSONDecoder().decode(SetupPayload.self, from: raw)

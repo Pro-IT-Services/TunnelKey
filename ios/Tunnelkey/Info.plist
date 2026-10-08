@@ -50,7 +50,8 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- Open .ovpn files from Files, Mail, AirDrop, … -->
+	<!-- Open .ovpn profiles and .tunnelkey setup files from Files, Mail, AirDrop, …
+	     (copied into the app's Inbox, not opened in place). -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -64,6 +65,43 @@
 			<array>
 				<string>net.openvpn.formats.ovpn</string>
 			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Tunnelkey setup file</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.proitservices.tunnelkey.setup</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.proitservices.tunnelkey.setup</string>
+			<key>UTTypeDescription</key>
+			<string>Tunnelkey setup file</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.json</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tunnelkey</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>application/vnd.tunnelkey.setup+json</string>
+				</array>
+			</dict>
 		</dict>
 	</array>
 	<key>UTImportedTypeDeclarations</key>
