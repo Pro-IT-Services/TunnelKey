@@ -95,6 +95,7 @@ func (a *App) startup(ctx context.Context) {
 	a.helloAvailable = hello.BiometricAvailable()
 	a.helper = &helperclient.Client{OnEvent: a.onHelperEvent, OnConnection: a.onHelperConnection}
 	go a.helper.Run(ctx)
+	a.startTray()
 	wruntime.OnFileDrop(ctx, func(_, _ int, paths []string) {
 		for _, p := range paths {
 			a.emitOpen(p)
@@ -238,7 +239,11 @@ func (a *App) State() AppState {
 func (a *App) SetLanguage(lang string) error {
 	st := a.store.Settings()
 	st.Language = lang
-	return a.store.SaveSettings(st)
+	if err := a.store.SaveSettings(st); err != nil {
+		return err
+	}
+	a.trayRelabel()
+	return nil
 }
 
 func (a *App) changed() {
@@ -253,7 +258,9 @@ func (a *App) onHelperConnection(up bool, v string) {
 	a.mu.Lock()
 	changed := a.helperUp != up
 	a.helperUp, a.helperVersion = up, v
+	st := a.status
 	a.mu.Unlock()
+	a.trayUpdate(st, up)
 	if changed {
 		a.changed()
 	}
@@ -268,7 +275,9 @@ func (a *App) onHelperEvent(ev ipc.Event) {
 		a.mu.Lock()
 		prev := a.status.Phase
 		a.status = *ev.Status
+		up := a.helperUp
 		a.mu.Unlock()
+		a.trayUpdate(*ev.Status, up)
 		wruntime.EventsEmit(a.ctx, "status", ev.Status)
 		if ev.Status.Phase == ipc.Failed && prev != ipc.Failed {
 			a.maybeRetry(*ev.Status)

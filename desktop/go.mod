@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	fyne.io/systray v1.12.2 // indirect
 	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3 // indirect
 	github.com/bep/debounce v1.2.1 // indirect
 	github.com/danieljoos/wincred v1.2.3 // indirect

@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 
@@ -34,7 +35,10 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 11, G: 15, B: 20, A: 1},
 		OnStartup:        app.startup,
-		Bind:             []interface{}{app},
+		OnShutdown:       func(context.Context) { app.stopTray() },
+		// With a tray icon, closing the window hides it; Quit is in the tray menu.
+		HideWindowOnClose: trayAvailable,
+		Bind:              []interface{}{app},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               "com.proitservices.tunnelkey",
 			OnSecondInstanceLaunch: func(d options.SecondInstanceData) { app.onSecondInstance(d.Args) },

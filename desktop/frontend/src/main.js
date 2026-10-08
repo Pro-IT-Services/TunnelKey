@@ -49,6 +49,13 @@ on("log", (lines) => document.dispatchEvent(new CustomEvent("tk-log", { detail: 
 // While locked, the app answers the sign-in itself after unlocking.
 on("need-creds", () => { if (!state?.locked) openSignIn({ reconnect: true }); });
 on("open-file", (path) => importPath(path));
+// "Connect" in the tray menu: same as the Connect button (asks for a
+// password or code when needed; a locked configuration shows the lock first).
+on("tray-connect", () => {
+  if (!state || state.locked) return;
+  if (state.managed) connectManaged();
+  else if (selectedProfile()) connectProfile(selectedProfile());
+});
 on("error", (code) => toast(errorText(code), "error"));
 
 document.addEventListener("keydown", (e) => {
