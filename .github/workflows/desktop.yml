@@ -16,9 +16,9 @@ env:
 jobs:
   windows:
     runs-on: windows-latest
-    # The Azure federated credential trusts this environment (one fixed
-    # identity for both manual runs and desktop-v* tags).
-    environment: release
+    # For code signing in CI, uncomment: the Azure federated credential trusts
+    # this environment (docs/windows-code-signing.md, section 8).
+    # environment: release
     # OIDC token for Azure Artifact Signing (only used when it is configured).
     permissions:
       contents: read
