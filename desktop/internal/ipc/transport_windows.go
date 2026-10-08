@@ -9,7 +9,7 @@ import (
 )
 
 // PipeName of the helper.
-const PipeName = `\.\pipe\tunnelkey-helper`
+const PipeName = `\\.\pipe\tunnelkey-helper`
 
 // SYSTEM and Administrators: full access; interactive users: read/write.
 const pipeSDDL = "D:P(A;;GA;;;SY)(A;;GA;;;BA)(A;;GRGW;;;IU)"

@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 
 	"golang.org/x/sys/windows/svc"
 
@@ -16,6 +18,7 @@ type service struct{}
 
 func (service) Execute(_ []string, req <-chan svc.ChangeRequest, status chan<- svc.Status) (bool, uint32) {
 	status <- svc.Status{State: svc.StartPending}
+	log.Printf("tunnelkey-helper %s starting", version)
 	e := helper.New()
 	l, err := ipc.Listen()
 	if err != nil {
@@ -43,8 +46,26 @@ func runAsService() bool {
 	if err != nil || !is {
 		return false
 	}
+	logToFile()
 	if err := svc.Run(ServiceName, service{}); err != nil {
 		log.Printf("service: %v", err)
 	}
 	return true
+}
+
+// logToFile keeps the service's own log in %ProgramData%\Tunnelkey (a
+// service has no console); it is truncated when it grows past 1 MB.
+func logToFile() {
+	dir := filepath.Join(os.Getenv("ProgramData"), "Tunnelkey")
+	if os.MkdirAll(dir, 0o755) != nil {
+		return
+	}
+	path := filepath.Join(dir, "helper.log")
+	flags := os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	if fi, err := os.Stat(path); err == nil && fi.Size() > 1<<20 {
+		flags |= os.O_TRUNC
+	}
+	if f, err := os.OpenFile(path, flags, 0o644); err == nil {
+		log.SetOutput(f)
+	}
 }
