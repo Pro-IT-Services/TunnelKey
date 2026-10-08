@@ -30,6 +30,13 @@ func TestValidCode(t *testing.T) {
 	}
 }
 
+func TestLooksLikePlainPackage(t *testing.T) {
+	if !looksLikePlainPackage([]byte(`{"name":"Office","ovpn":"client\nremote x\n","password":"pw"}`)) ||
+		looksLikePlainPackage([]byte(`{"tunnelkey":"setup-file","v":1}`)) || looksLikePlainPackage([]byte("client\nremote x\n")) {
+		t.Fatal("looksLikePlainPackage")
+	}
+}
+
 func TestLooksLikeSetupFile(t *testing.T) {
 	if !looksLikeSetupFile([]byte("\xef\xbb\xbf{\n  \"tunnelkey\": \"setup-file\",")) || looksLikeSetupFile([]byte("client\nremote x\n")) {
 		t.Fatal("looksLikeSetupFile")

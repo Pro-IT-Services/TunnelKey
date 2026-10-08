@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -358,6 +360,9 @@ func (a *App) ImportPath(path string) ImportResult {
 	if looksLikeSetupFile(b) {
 		return ImportResult{Kind: "setup", Path: path}
 	}
+	if looksLikePlainPackage(b) {
+		return ImportResult{Kind: "error", Error: "plain_package"}
+	}
 	name := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	return a.importText(string(b), name)
 }
@@ -367,12 +372,27 @@ func (a *App) ImportText(text string) ImportResult {
 	if looksLikeSetupFile([]byte(text)) {
 		return ImportResult{Kind: "error", Error: "paste_setup_file"}
 	}
+	if looksLikePlainPackage([]byte(text)) {
+		return ImportResult{Kind: "error", Error: "plain_package"}
+	}
 	return a.importText(text, "")
 }
 
 func looksLikeSetupFile(b []byte) bool {
 	s := strings.TrimSpace(strings.TrimPrefix(string(b[:min(len(b), 4096)]), "\xef\xbb\xbf"))
 	return strings.HasPrefix(s, "{") && strings.Contains(s, `"tunnelkey"`)
+}
+
+// looksLikePlainPackage spots the unencrypted package files that earlier
+// versions of the setup page saved; they must be saved again encrypted.
+func looksLikePlainPackage(b []byte) bool {
+	var v map[string]json.RawMessage
+	if json.Unmarshal(bytes.TrimPrefix(b, []byte("\xef\xbb\xbf")), &v) != nil {
+		return false
+	}
+	_, hasOVPN := v["ovpn"]
+	_, isSetup := v["tunnelkey"]
+	return hasOVPN && !isSetup
 }
 
 func (a *App) importText(text, name string) ImportResult {

@@ -6,8 +6,8 @@
 import qrcode from "./vendor/qrcode.js";
 import {
   MAX_LINKS, MAX_PROFILE_BYTES, SETUP_FILE_MIN_PASSWORD, SETUP_FILE_TYPE, buildPayload,
-  decodeSetupCodes, encodeSetupCodes, encryptSetupFile, generatePassphrase, inspectOvpn,
-  normalizeTotp, parseOtpauth, secondsLeft, totpCode,
+  decodeSetupCodes, decryptSetupFile, encodeSetupCodes, encryptSetupFile, generatePassphrase, inspectOvpn,
+  normalizeTotp, parseOtpauth, payloadToPackage, secondsLeft, totpCode,
 } from "./core.js";
 
 const app = document.getElementById("app");
@@ -54,6 +54,7 @@ const ICONS = {
   download: ["M12 4v11", "M7 10l5 5 5-5", "M5 20h14"],
   key: ["M8 11a4 4 0 1 0 0 8 4 4 0 0 0 0-8z", "M11 12l9-9", "M17 6l3 3", "M15 8l2 2"],
   copy: ["M9 9h11v11H9z", "M5 15H4V4h11v1"],
+  close: ["M6 6l12 12", "M18 6L6 18"],
   eye: ["M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
   eyeOff: ["M3 3l18 18", "M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.2", "M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.5-.6 4.9-1.4", "M9.9 9.9a3 3 0 0 0 4.2 4.2"],
 };
@@ -383,33 +384,40 @@ function renderEditor() {
       h("div", { class: "phone-connect" }, h("div", { text: "Connect" })))),
     h("div", { class: "phone-caption", text: "What the user sees after scanning" }));
 
-  // ---- Save / open package files
-  const openInput = h("input", { type: "file", accept: ".json,application/json", class: "hidden-input" });
+  // ---- Save / open setup files (always password-encrypted)
+  const openInput = h("input", { type: "file", accept: ".tunnelkey,.json,application/json", class: "hidden-input" });
   openInput.addEventListener("change", async () => {
     const f = openInput.files[0];
+    openInput.value = "";
     if (!f) return;
+    let text, data;
     try {
-      const data = JSON.parse(await f.text());
-      if (data && data.tunnelkey === "setup-file") {
-        toast("That's an encrypted desktop setup file — open it in Tunnelkey on the computer.");
-        return;
-      }
+      text = await f.text();
+      data = JSON.parse(text);
+    } catch {
+      toast("That isn't a Tunnelkey setup file.");
+      return;
+    }
+    if (data && data.tunnelkey === "setup-file") {
+      openSetupFile(text, f.name);
+      return;
+    }
+    // Unencrypted package files saved by earlier versions of this page.
+    try {
       s = fromPackage(data);
       renderEditor();
-      toast("Package loaded");
+      toast("Old unencrypted file loaded. Save it again as an encrypted setup file and delete the old one.");
     } catch {
-      toast("That isn't a Tunnelkey package file.");
+      toast("That isn't a Tunnelkey setup file.");
     }
   });
   const toolbar = h("div", { class: "toolbar no-print" },
     h("button", {
       class: "btn ghost small", type: "button",
-      onclick: () => {
-        if (!confirm("The file contains the profile, password and 2FA secret in plain text. Store it somewhere safe. Continue?")) return;
-        download(`${slug(s.name)}.tunnelkey.json`, new Blob([JSON.stringify(toPackage(), null, 2)], { type: "application/json" }));
-      },
-    }, icon("save"), "Save package file"),
-    h("button", { class: "btn ghost small", type: "button", onclick: () => openInput.click() }, icon("open"), "Open package file"),
+      onclick: () => modal("Save setup file", (close) =>
+        desktopCard(s.name, async () => buildPayload(toPackage()), { id: "save-pass", inModal: true, onSaved: close })),
+    }, icon("save"), "Save setup file"),
+    h("button", { class: "btn ghost small", type: "button", onclick: () => openInput.click() }, icon("open"), "Open setup file"),
     h("button", {
       class: "btn ghost small", type: "button",
       onclick: () => { if (confirm("Clear the form?")) { s = emptyState(); renderEditor(); } },
@@ -418,7 +426,7 @@ function renderEditor() {
 
   // ---- Create
   const status = h("div", { class: "status muted" });
-  const create = h("button", { class: "btn primary", type: "submit" }, icon("qr"), "Create setup codes");
+  const create = h("button", { class: "btn primary", type: "submit" }, icon("qr"), "Create setup code and file");
   const form = h("form", {
     onsubmit: async (e) => {
       e.preventDefault();
@@ -446,9 +454,9 @@ function renderEditor() {
   app.replaceChildren(
     h("div", { class: "page-head" },
       h("div", {},
-        h("div", { class: "eyebrow", text: "Provision a phone" }),
+        h("div", { class: "eyebrow", text: "Provision a phone or computer" }),
         h("h1", { text: "Create a setup code" }),
-        h("p", { class: "lede", text: "Put a VPN profile, its sign-in, the 2FA secret and your links onto a phone with one scan of the Tunnelkey app." })),
+        h("p", { class: "lede", text: "Put a VPN profile, its sign-in, the 2FA secret and your links into Tunnelkey: a QR code for phones, or a password-encrypted setup file (.tunnelkey) for Windows, macOS and Linux." })),
       toolbar),
     h("div", { class: "card offline-note" }, icon("shield"),
       h("div", {},
@@ -553,10 +561,10 @@ function renderCodes(codes, payload) {
 
 /** Card for Tunnelkey on Windows, macOS and Linux: an encrypted setup file,
  *  encrypted in this browser. getPayload() resolves to the setup-code payload. */
-function desktopCard(name, getPayload) {
+function desktopCard(name, getPayload, { id = "file-pass", inModal = false, onSaved } = {}) {
   const min = SETUP_FILE_MIN_PASSWORD;
   const pass = h("input", {
-    type: "password", id: "file-pass", class: "mono", autocomplete: "new-password", spellcheck: false,
+    type: "password", id, class: "mono", autocomplete: "new-password", spellcheck: false,
     placeholder: `At least ${min} characters`, oninput: () => { generated.hidden = true; refresh(); },
   });
   const toggle = h("button", { class: "icon-btn", type: "button", onclick: () => setShown(pass.type === "password") });
@@ -612,6 +620,11 @@ function desktopCard(name, getPayload) {
       const text = await encryptSetupFile(await getPayload(), pass.value);
       download(`${slug(name)}.tunnelkey`, new Blob([text], { type: SETUP_FILE_TYPE }));
       status.replaceChildren();
+      if (onSaved) {
+        onSaved();
+        toast("Setup file saved");
+        return;
+      }
     } catch (err) {
       status.replaceChildren(h("div", { class: "field" }, banner("error", err.message)));
     }
@@ -620,11 +633,13 @@ function desktopCard(name, getPayload) {
 
   setShown(false);
   refresh();
-  return h("div", { class: "card desktop" },
-    h("h3", { text: "Desktop (Windows, macOS, Linux)" }),
-    h("p", { class: "muted", text: "Download an encrypted setup file and open it with Tunnelkey on the computer. It asks for this password." }),
+  return h("div", { class: inModal ? "desktop" : "card desktop" },
+    inModal ? null : h("h3", { text: "Desktop (Windows, macOS, Linux)" }),
+    h("p", { class: "muted", text: inModal
+      ? "The file is encrypted in this browser. Open it in Tunnelkey on Windows, macOS or Linux, or here again to edit it — both ask for this password."
+      : "Download an encrypted setup file and open it with Tunnelkey on the computer. It asks for this password." }),
     h("div", { class: "field" },
-      h("label", { for: "file-pass", text: "File password" }),
+      h("label", { for: id, text: "File password" }),
       h("div", { class: "pass-wrap" }, pass, toggle),
       generated,
       count,
@@ -632,6 +647,52 @@ function desktopCard(name, getPayload) {
     status,
     save,
     h("p", { class: "hint", text: "Send the file and the password through different channels." }));
+}
+
+// ---------------------------------------------------------------- dialogs
+
+function modal(title, build) {
+  const dlg = h("dialog", { class: "modal" });
+  const close = () => dlg.close();
+  dlg.addEventListener("close", () => dlg.remove());
+  dlg.append(
+    h("div", { class: "modal-head" },
+      h("h3", { text: title }),
+      h("button", { class: "icon-btn", type: "button", title: "Close", "aria-label": "Close", onclick: close }, icon("close"))),
+    build(close));
+  document.body.append(dlg);
+  dlg.showModal();
+  dlg.querySelector("input")?.focus();
+}
+
+/** Asks for the password of an encrypted setup file and loads it into the editor. */
+function openSetupFile(text, fileName) {
+  modal("Open setup file", (close) => {
+    const pass = h("input", { type: "password", id: "open-pass", class: "mono", autocomplete: "off", spellcheck: false });
+    const status = h("div");
+    const submit = h("button", { class: "btn primary block", type: "submit" }, icon("open"), "Open");
+    return h("form", {
+      onsubmit: async (e) => {
+        e.preventDefault();
+        submit.disabled = true;
+        status.replaceChildren(h("p", { class: "muted", text: "Decrypting…" }));
+        try {
+          s = fromPackage(payloadToPackage(await decryptSetupFile(text, pass.value)));
+          close();
+          renderEditor();
+          toast("Setup file opened");
+        } catch (err) {
+          status.replaceChildren(h("div", { class: "field" }, banner("error", err.message)));
+          submit.disabled = false;
+          pass.select();
+        }
+      },
+    },
+      h("p", { class: "muted", text: fileName }),
+      h("div", { class: "field" }, h("label", { for: "open-pass", text: "File password" }), pass),
+      status,
+      submit);
+  });
 }
 
 function footer() {

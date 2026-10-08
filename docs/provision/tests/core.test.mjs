@@ -1,11 +1,11 @@
-// node --test docs/provision/tests/
+// node --test docs/provision/tests/core.test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import {
   PASSPHRASE_WORDS, SETUP_FILE_ITER, base45Decode, base45Encode, base64urlDecode, buildPayload,
   decodeSetupCodes, decryptSetupFile, encodeSetupCodes, encryptSetupFile, generatePassphrase,
-  linkUri, parseOtpauth, totpCode, validatePackage, zlibDecompress,
+  linkUri, parseOtpauth, payloadToPackage, totpCode, validatePackage, zlibDecompress,
 } from "../core.js";
 import * as serverWeb from "../../../server/web/setupfile.js";
 
@@ -210,4 +210,25 @@ test("reads the setup file fixture shared with the Go tests", async () => {
   assert.equal(p.p, "pässwörd");
   assert.equal(p.t.s, "JBSWY3DPEHPK3PXP");
   assert.equal(p.l[1].u, "rdp://full%20address=s:10.0.0.5:3389&username=s:CORP%5Cmarko");
+});
+
+test("setup files open back into the editor", async () => {
+  const pkg = {
+    name: "Office VPN", ovpn: "client\nremote vpn.example.com 1194\nauth-user-pass\n", username: "marko",
+    password: "pw", totp: { secret: "JBSWY3DPEHPK3PXP", digits: 6, period: 30, algorithm: "SHA1" },
+    manualCode: false, codePosition: "before",
+    links: [
+      { kind: "web", title: "Intranet", url: "https://intranet.example.com" },
+      { kind: "rdp", title: "PC & desk", host: "pc01.corp.local", port: 3390, username: String.raw`corp\marko` },
+      { kind: "app", title: "App", url: "myapp://open?x=1" },
+    ],
+  };
+  const payload = buildPayload(pkg);
+  const file = await encryptSetupFile(payload, "correct-horse-battery");
+  const back = payloadToPackage(await decryptSetupFile(file, "correct-horse-battery"));
+  assert.deepEqual(buildPayload(back), payload);
+  assert.equal(back.links[1].host, "pc01.corp.local");
+  assert.equal(back.links[1].port, 3390);
+  assert.equal(back.links[1].username, String.raw`corp\marko`);
+  assert.equal(back.codePosition, "before");
 });

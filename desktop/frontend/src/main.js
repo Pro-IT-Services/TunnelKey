@@ -452,7 +452,7 @@ function handleImport(r) {
   if (!r || r.kind === "cancelled") return;
   if (r.kind === "setup") return go("setup-open", { path: r.path });
   if (r.kind === "ovpn") return go("editor", { draft: r.draft });
-  const known = { file_too_large: "import_too_large", file_unreadable: "import_unreadable", paste_setup_file: "import_paste_setup" };
+  const known = { file_too_large: "import_too_large", file_unreadable: "import_unreadable", paste_setup_file: "import_paste_setup", plain_package: "import_plain_package" };
   toast(known[r.error] ? t(known[r.error]) : t("import_refused", r.error), "error");
 }
 

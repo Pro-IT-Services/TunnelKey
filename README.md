@@ -121,11 +121,21 @@ photographs one gets that VPN access, including the 2FA secret. Show codes only
 to their owner and delete the package once the phone is set up. The format is
 documented in [docs/provisioning-format.md](docs/provisioning-format.md).
 
-**Desktop setup file:** both setup pages can also download a `.tunnelkey`
+**Desktop setup file:** both setup pages can also produce a `.tunnelkey`
 file for Tunnelkey on Windows, macOS and Linux — the same configuration,
 encrypted in the browser with a password you choose or generate (PBKDF2-SHA256 +
 AES-256-GCM; the password never reaches the server). Send the file and the
 password through different channels.
+
+- Browser-only page: **Save setup file** (top right) saves the form as an
+  encrypted `.tunnelkey`; **Open setup file** loads one back for editing. After
+  *Create setup code and file*, the result page offers the same download next
+  to the QR codes. Unencrypted package files from earlier versions can still be
+  opened there and should be saved again encrypted.
+- Server: open a package's codes and use the *Desktop* card.
+- On the computer: double-click the `.tunnelkey` file (or drop it onto
+  Tunnelkey, or use **+** → *Choose a file*), enter the password, choose
+  Windows Hello or a PIN, done.
 
 ## App lock
 

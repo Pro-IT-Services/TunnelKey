@@ -199,6 +199,36 @@ export function buildPayload(pkg) {
   return out;
 }
 
+/** Inverse of buildPayload: turns a setup payload back into an editable package. */
+export function payloadToPackage(payload) {
+  const p = payload || {};
+  if (p.v !== 1 || typeof p.n !== "string" || typeof p.o !== "string") throw new Error("This setup file can't be edited here.");
+  const links = (Array.isArray(p.l) ? p.l : []).map((l) => {
+    const link = { kind: ["web", "rdp", "app"].includes(l.k) ? l.k : "app", title: String(l.t || "") };
+    if (link.kind !== "rdp") return { ...link, url: String(l.u || "") };
+    const fields = {};
+    for (const part of String(l.u || "").replace(/^rdp:\/\//, "").split("&")) {
+      const i = part.indexOf("=");
+      if (i < 0) continue;
+      const key = decodeURIComponent(part.slice(0, i)).toLowerCase();
+      fields[key] = decodeURIComponent(part.slice(i + 1)).replace(/^s:/, "");
+    }
+    const address = fields["full address"] || "";
+    const m = /^(.*?)(?::(\d+))?$/.exec(address);
+    return { ...link, host: m[1], port: m[2] ? Number(m[2]) : 3389, username: fields.username || "" };
+  });
+  return {
+    name: p.n,
+    ovpn: p.o,
+    username: p.u || "",
+    password: p.p || "",
+    totp: p.t ? { secret: p.t.s, digits: p.t.d || 6, period: p.t.p || 30, algorithm: p.t.a || "SHA1" } : null,
+    manualCode: !p.t && !!p.f,
+    codePosition: p.c === "b" ? "before" : "after",
+    links,
+  };
+}
+
 export function base45Encode(bytes) {
   let s = "";
   for (let i = 0; i + 1 < bytes.length; i += 2) {
