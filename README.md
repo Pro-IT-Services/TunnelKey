@@ -1,8 +1,9 @@
 # Tunnelkey
 
-Open-source OpenVPN client for **Android** and **iOS** built for servers that
-use two-factor authentication, plus a small **provisioning server** that puts a
-complete, locked-down configuration onto a phone with one scan.
+Open-source OpenVPN client for **Android**, **iOS**, **Windows**, **macOS** and
+**Linux** built for servers that use two-factor authentication, plus a small
+**provisioning server** that puts a complete, locked-down configuration onto a
+phone with one scan, or onto a computer with one password-encrypted file.
 
 - **Password + TOTP** — for OpenVPN servers whose 2FA plugin expects the
   authenticator code glued to the password (`hunter2` + `123456` →
@@ -13,16 +14,22 @@ complete, locked-down configuration onto a phone with one scan.
   URIs). The phone scans the QR code(s) and switches to **single-config mode**:
   the configuration name is the title, one Connect button, and the links below.
   With the TOTP secret on the phone, connecting needs no typing at all.
+- **Setup files for desktop** — the same configuration as a `.tunnelkey` file,
+  encrypted in the browser with a password; opening it on a computer switches
+  the desktop app to single-config mode.
 - **Locked secrets** — a stored password or TOTP secret is protected by
-  fingerprint / Face ID or an 8-digit PIN that refuses weak patterns.
+  fingerprint / Face ID / Windows Hello or an 8-digit PIN that refuses weak
+  patterns.
 
-Native on both platforms: Kotlin + Jetpack Compose on Android, Swift + SwiftUI
-+ NetworkExtension on iOS. Both use the OpenVPN 3 core.
+Native on the phones: Kotlin + Jetpack Compose on Android, Swift + SwiftUI
++ NetworkExtension on iOS, both on the OpenVPN 3 core. The desktop app is Go +
+Wails with a small privileged helper service that runs OpenVPN 2.6.
 
 ```
 tunnelkey/
 ├── android/   Kotlin/Compose app + :ovpn3 module (OpenVPN 3 core via JNI)
 ├── ios/       SwiftUI app + packet tunnel extension (OpenVPNAdapter)
+├── desktop/   Windows/macOS/Linux app (Go + Wails) and its helper service
 ├── server/    Go provisioning server with embedded admin web UI
 ├── fastlane/  Google Play store listing (texts + graphics)
 └── docs/      Setup code format, privacy policy, Play publishing guide
@@ -48,7 +55,7 @@ fresh one if the current code is about to expire.
 
 ### Browser-only (no server)
 
-**<https://kalipsers.github.io/TunnelKey/provision/>** — the same setup codes,
+**<https://pro-it-services.github.io/TunnelKey/provision/>** — the same setup codes,
 created entirely in the browser: pick the `.ovpn`, enter credentials, the TOTP
 secret and links, get the QR code(s). Nothing is uploaded or stored (the page is
 not allowed to make network requests); packages can be saved to / opened from a
@@ -64,7 +71,7 @@ central storage.
 Needs Docker with the Compose plugin and SSH access to the repository.
 
 ```bash
-git clone git@github.com:kalipsers/TunnelKey.git /opt/tunnelkey
+git clone git@github.com:Pro-IT-Services/TunnelKey.git /opt/tunnelkey
 cd /opt/tunnelkey
 cp .env.example .env          # set TUNNELKEY_ADMIN_USER / TUNNELKEY_ADMIN_PASSWORD
 ./deploy.sh
@@ -124,6 +131,9 @@ password through different channels.
 
 A configuration that includes a password or TOTP secret must be locked:
 
+- **Windows Hello** (desktop app on Windows) — the secrets are sealed with a
+  key protected by Windows (DPAPI) and only opened after Windows Hello confirms
+  the user.
 - **Fingerprint / face** — Android: AES-256-GCM key in the Android Keystore
   usable only after a strong biometric check, invalidated when biometrics
   change. iOS: Keychain item with `.biometryCurrentSet` access control.
@@ -134,7 +144,8 @@ A configuration that includes a password or TOTP secret must be locked:
   keypad shapes. After 5 wrong PINs growing delays apply; the 10th erases the
   configuration.
 
-The app re-locks after 30 seconds in the background. *Remove configuration*
+The app re-locks after 30 seconds in the background (desktop: 30 seconds after
+the window is hidden). *Remove configuration*
 (menu) wipes everything and returns to the normal multi-profile app.
 
 ## Building
@@ -165,11 +176,22 @@ open Tunnelkey.xcodeproj
 The tunnel uses [OpenVPNAdapter](https://github.com/ss-abramchuk/OpenVPNAdapter)
 0.8.0 (OpenVPN 3 + mbed TLS 2) via Swift Package Manager.
 
+### Desktop (Windows, macOS, Linux)
+
+See [desktop/README.md](desktop/README.md). On Windows:
+
+```powershell
+cd desktop
+.\scripts\build-windows.ps1   # -> build\out\Tunnelkey-<version>-setup.exe
+```
+
+macOS and Linux packages are built by the `desktop` GitHub Actions workflow.
+
 ## Publishing
 
 Google Play listing texts (English, Slovak), graphics, screenshots, privacy
 policy and step-by-step Play Console answers: [docs/play-store](docs/play-store/README.md).
-Privacy policy: <https://kalipsers.github.io/TunnelKey/privacy-policy.html>.
+Privacy policy: <https://pro-it-services.github.io/TunnelKey/privacy-policy.html>.
 
 ## Licence
 

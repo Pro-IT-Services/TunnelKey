@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kalipsers/TunnelKey/desktop/internal/protect"
-	"github.com/kalipsers/TunnelKey/desktop/internal/setupfile"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/protect"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/setupfile"
 )
 
 // Profile mirrors the phone app's profile.

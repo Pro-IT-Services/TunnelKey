@@ -10,7 +10,7 @@ section: net
 priority: optional
 maintainer: ProIT services <develop@pro-it.sk>
 vendor: ProIT services
-homepage: https://github.com/kalipsers/TunnelKey
+homepage: https://github.com/Pro-IT-Services/TunnelKey
 license: AGPL-3.0-only
 description: |-
   OpenVPN client with two-factor sign-in.

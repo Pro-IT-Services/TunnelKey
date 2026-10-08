@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kalipsers/TunnelKey/desktop/internal/ipc"
-	"github.com/kalipsers/TunnelKey/desktop/internal/ovpn"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ipc"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ovpn"
 )
 
 const (

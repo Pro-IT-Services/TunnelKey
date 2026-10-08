@@ -22,15 +22,15 @@
           Version="$(var.Version)"
           UpgradeCode="{772BEF3D-1821-4F24-8593-84AC7DE632A1}"
           IconSourceFile="$(var.IconFile)"
-          AboutUrl="https://github.com/kalipsers/TunnelKey"
-          HelpUrl="https://github.com/kalipsers/TunnelKey"
+          AboutUrl="https://github.com/Pro-IT-Services/TunnelKey"
+          HelpUrl="https://github.com/Pro-IT-Services/TunnelKey"
           Copyright="Copyright (c) 2026 ProIT services. AGPL-3.0."
           DisableModify="yes">
 
     <BootstrapperApplication>
       <bal:WixStandardBootstrapperApplication
           Theme="hyperlinkLicense"
-          LicenseUrl="https://github.com/kalipsers/TunnelKey/blob/main/LICENSE"
+          LicenseUrl="https://github.com/Pro-IT-Services/TunnelKey/blob/main/LICENSE"
           LogoFile="$(var.LogoFile)"
           SuppressOptionsUI="yes"
           ShowVersion="yes" />

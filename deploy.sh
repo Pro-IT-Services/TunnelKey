@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy or update the Tunnelkey provisioning server with Docker.
 #
-#   First install:   git clone git@github.com:kalipsers/TunnelKey.git /opt/tunnelkey
+#   First install:   git clone git@github.com:Pro-IT-Services/TunnelKey.git /opt/tunnelkey
 #                    /opt/tunnelkey/deploy.sh
 #   Update:          /opt/tunnelkey/deploy.sh
 #
@@ -12,7 +12,7 @@
 #   -d DIR      checkout directory (default: this script's directory if it is a
 #               git checkout, otherwise /opt/tunnelkey; cloned when missing)
 #   -b BRANCH   branch to deploy (default: main)
-#   -r URL      repository (default: git@github.com:kalipsers/TunnelKey.git)
+#   -r URL      repository (default: git@github.com:Pro-IT-Services/TunnelKey.git)
 #   --no-pull   deploy the checkout as it is, without syncing
 #   --force     discard local changes to tracked files when syncing
 #   -h          help
@@ -21,7 +21,7 @@
 
 set -euo pipefail
 
-REPO_URL="${TUNNELKEY_REPO:-git@github.com:kalipsers/TunnelKey.git}"
+REPO_URL="${TUNNELKEY_REPO:-git@github.com:Pro-IT-Services/TunnelKey.git}"
 BRANCH="${TUNNELKEY_BRANCH:-main}"
 DIR="${TUNNELKEY_DIR:-}"
 PULL=1

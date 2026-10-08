@@ -35,8 +35,8 @@
     <!-- Add/Remove Programs -->
     <Icon Id="TunnelkeyIcon" SourceFile="$(var.IconFile)" />
     <Property Id="ARPPRODUCTICON" Value="TunnelkeyIcon" />
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/kalipsers/TunnelKey" />
-    <Property Id="ARPHELPLINK" Value="https://github.com/kalipsers/TunnelKey" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Pro-IT-Services/TunnelKey" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Pro-IT-Services/TunnelKey" />
     <Property Id="ARPCONTACT" Value="develop@pro-it.sk" />
     <Property Id="ARPCOMMENTS" Value="OpenVPN client with two-factor sign-in. Licensed under AGPL-3.0." />
 

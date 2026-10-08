@@ -32,16 +32,16 @@
   Tunnelkey
 </div>
 <h1>Tunnelkey Privacy Policy</h1>
-<p><strong>Effective date:</strong> 26 September 2026 · <strong>Last updated:</strong> 27 September 2026
-<strong>Applies to:</strong> the Tunnelkey apps for Android and iOS, and the self-hosted Tunnelkey provisioning server software
+<p><strong>Effective date:</strong> 26 September 2026 · <strong>Last updated:</strong> 8 October 2026
+<strong>Applies to:</strong> the Tunnelkey apps for Android and iOS, the Tunnelkey desktop app for Windows, macOS and Linux, the Tunnelkey setup page, and the self-hosted Tunnelkey provisioning server software
 <strong>Publisher:</strong> ProIT services — contact: <a href="mailto:develop@pro-it.sk">develop@pro-it.sk</a></p>
 <h2>Summary</h2>
 <p>Tunnelkey is a VPN <em>client</em>. It connects your device to an OpenVPN server that
 you or your organisation operate. <strong>ProIT services does not run VPN servers and
-does not receive, collect, store or sell any data from the app.</strong> There are no
+does not receive, collect, store or sell any data from the apps.</strong> There are no
 accounts, no analytics, no advertising and no tracking.</p>
-<h2>1. Data the app processes on your device</h2>
-<p>To work, the app stores the following <strong>only on your device</strong>:</p>
+<h2>1. Data the apps process on your device</h2>
+<p>To work, the apps store the following <strong>only on your device</strong>:</p>
 <table>
 <thead>
 <tr>
@@ -54,7 +54,7 @@ accounts, no analytics, no advertising and no tracking.</p>
 <tr>
 <td>VPN profiles (<code>.ovpn</code> files, including certificates and private keys)</td>
 <td>Connecting to your VPN server</td>
-<td>App-private storage</td>
+<td>Phones: app-private storage. Desktop: encrypted with a key protected by your operating-system account (see below)</td>
 </tr>
 <tr>
 <td>Username</td>
@@ -64,12 +64,12 @@ accounts, no analytics, no advertising and no tracking.</p>
 <tr>
 <td>Password (only if you choose to save it, or your administrator provisions it)</td>
 <td>Signing in to your VPN server</td>
-<td>Encrypted with a key in the Android Keystore / iOS Keychain</td>
+<td>Encrypted with a key in the Android Keystore / iOS Keychain, or on desktop with your account's key store</td>
 </tr>
 <tr>
 <td>Two-factor (TOTP) secret (only when provisioned by your administrator)</td>
 <td>Generating sign-in codes on the device</td>
-<td>Encrypted; protected by fingerprint/face or an 8-digit PIN</td>
+<td>Encrypted; protected by fingerprint/face (phones), Windows Hello (Windows) or an 8-digit PIN</td>
 </tr>
 <tr>
 <td>Links added by your administrator</td>
@@ -79,27 +79,39 @@ accounts, no analytics, no advertising and no tracking.</p>
 <tr>
 <td>Connection log (connection events, server address, errors)</td>
 <td>Showing you what happened, for troubleshooting</td>
-<td>Kept in memory / app storage; shared only if <em>you</em> copy or share it</td>
+<td>Kept in memory; shared only if <em>you</em> copy or share it</td>
 </tr>
 </tbody>
 </table>
+<p>On desktop computers the encryption key is protected by the operating system:
+Windows Data Protection (DPAPI) on Windows, the login Keychain on macOS, and the
+Secret Service (for example GNOME Keyring or KWallet) on Linux. If a Linux
+system has no Secret Service, the key is protected only by file permissions and
+the app tells you so. The desktop app keeps its data in your user profile
+(<code>%APPDATA%\Tunnelkey</code> on Windows, <code>~/Library/Application Support/Tunnelkey</code> on
+macOS, <code>~/.config/Tunnelkey</code> on Linux).</p>
 <p>Authenticator codes you type are used for a single sign-in and are never stored.</p>
-<p>The app reads the clipboard only when you tap <em>Paste code</em> or <em>Paste from
+<p>The apps read the clipboard only when you choose <em>Paste code</em> or <em>Paste from
 clipboard</em>, to take a code or a profile you copied yourself; nothing is read in
 the background.</p>
-<p>This data is <strong>not transmitted to ProIT services or any third party</strong>. It is
-excluded from cloud backups and device transfers. You can delete it at any time
-by deleting a profile, using <em>Remove configuration</em>, or uninstalling the app.
+<p>This data is <strong>not transmitted to ProIT services or any third party</strong>. On
+phones it is excluded from cloud backups and device transfers. You can delete
+it at any time by deleting a profile, using <em>Remove configuration</em>, or
+uninstalling the app (on desktop, also delete the folder listed above).
 Entering a wrong PIN ten times erases the provisioned configuration.</p>
 <h2>2. Network traffic and the VPN</h2>
-<p>When you connect, the app uses Android's <code>VpnService</code> (or iOS's Network
-Extension) to create an encrypted OpenVPN tunnel <strong>between your device and the
-VPN server in your profile</strong>. Your credentials and one-time code are sent only
-to that server, over the encrypted connection, to sign you in.</p>
+<p>When you connect, the app creates an encrypted OpenVPN tunnel <strong>between your
+device and the VPN server in your profile</strong>: through Android's <code>VpnService</code>,
+iOS's Network Extension, or on desktop through the Tunnelkey helper service
+running OpenVPN 2.6 (community edition). Your credentials and one-time code are
+sent only to that server, over the encrypted connection, to sign you in. On
+desktop they are passed from the app to the helper over a local channel on the
+same computer and are not written to disk.</p>
 <p>Tunnelkey does not inspect, log, modify, redirect or sell your traffic. What
 happens to traffic after it reaches your VPN server is governed by the operator
 of that server (you or your organisation), not by ProIT services.</p>
 <h2>3. Permissions</h2>
+<p><strong>Phones</strong></p>
 <table>
 <thead>
 <tr>
@@ -130,36 +142,65 @@ of that server (you or your organisation), not by ProIT services.</p>
 </tr>
 </tbody>
 </table>
-<h2>4. Setup codes and the provisioning server</h2>
+<p><strong>Desktop</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tunnelkey helper (system service)</td>
+<td>Creating the VPN tunnel, network routes and DNS settings, which require administrator rights. It only runs profiles that pass a safety check (no scripts, plugins or file access) and keeps a short technical log of its own start-up and errors on the computer</td>
+</tr>
+<tr>
+<td>OpenVPN 2.6 and its network drivers (installed with Tunnelkey on Windows; the system's <code>openvpn</code> package on Linux)</td>
+<td>The OpenVPN engine and virtual network adapter</td>
+</tr>
+<tr>
+<td>Windows Hello</td>
+<td>Unlocking stored secrets. Face, fingerprint and PIN checks are handled entirely by Windows; the app only receives "verified" or "not verified"</td>
+</tr>
+</tbody>
+</table>
+<h2>4. Setup codes, setup files and the provisioning server</h2>
 <p>Organisations can use the open-source Tunnelkey provisioning server to create
-setup QR codes. That server is <strong>installed and operated by the organisation
-itself</strong>, not by ProIT services. The organisation decides what a setup code
-contains (VPN profile, username, password, TOTP secret, links) and is the
-controller of that data; please contact your IT administrator about how they
-handle it. Setup codes are read on the device; scanning does not contact any
-server.</p>
-<p>Setup codes can also be created with the Tunnelkey setup page
-(<a href="https://kalipsers.github.io/TunnelKey/provision/">https://kalipsers.github.io/TunnelKey/provision/</a>). It runs entirely in the
-web browser: what you enter is processed on your computer, never transmitted
-(the page is technically prevented from making network requests) and not stored
-unless you save a package file yourself. GitHub, which hosts the page, may log
-ordinary web-server data such as your IP address when the page is loaded; see
-GitHub's privacy statement.</p>
+setup QR codes (for phones) and password-encrypted setup files (<code>.tunnelkey</code>,
+for desktop computers). That server is <strong>installed and operated by the
+organisation itself</strong>, not by ProIT services. The organisation decides what a
+setup code or file contains (VPN profile, username, password, TOTP secret,
+links) and is the controller of that data; please contact your IT administrator
+about how they handle it. Setup codes and files are read on the device; opening
+them does not contact any server.</p>
+<p>Setup files are encrypted in the web browser with a password chosen by the
+administrator (PBKDF2-SHA256 and AES-256-GCM). The password is not sent to the
+provisioning server.</p>
+<p>Setup codes and files can also be created with the Tunnelkey setup page
+(<a href="https://pro-it-services.github.io/TunnelKey/provision/">https://pro-it-services.github.io/TunnelKey/provision/</a>). It runs entirely in
+the web browser: what you enter is processed on your computer, never
+transmitted (the page is technically prevented from making network requests)
+and not stored unless you save a file yourself. GitHub, which hosts the page,
+may log ordinary web-server data such as your IP address when the page is
+loaded; see GitHub's privacy statement.</p>
 <h2>5. Third parties</h2>
-<p>The app contains no third-party analytics, advertising or tracking SDKs. Links
+<p>The apps contain no third-party analytics, advertising or tracking SDKs. Links
 provisioned by your administrator may open other apps (for example a web
-browser or Microsoft's Windows App for Remote Desktop); those apps have their
-own privacy policies.</p>
+browser, Remote Desktop Connection or Microsoft's Windows App); those apps have
+their own privacy policies. The desktop app and its installer do not check for
+updates or contact ProIT services.</p>
 <h2>6. Children</h2>
 <p>Tunnelkey is a tool for connecting to organisational or personal VPN servers and
 is not directed at children under 13 (or the equivalent minimum age in your
 country).</p>
 <h2>7. Security</h2>
-<p>Secrets are encrypted with hardware-backed keys where the device supports them,
-the app can be locked with biometrics or a strong PIN, and the source code is
-public for independent review: <a href="https://github.com/kalipsers/TunnelKey">https://github.com/kalipsers/TunnelKey</a>.</p>
+<p>Secrets are encrypted with hardware-backed or operating-system-protected keys,
+the apps can be locked with biometrics, Windows Hello or a strong PIN, and the
+source code is public for independent review:
+<a href="https://github.com/Pro-IT-Services/TunnelKey">https://github.com/Pro-IT-Services/TunnelKey</a>.</p>
 <h2>8. Your rights</h2>
-<p>Because ProIT services does not collect or hold personal data from the app,
+<p>Because ProIT services does not collect or hold personal data from the apps,
 there is no data for us to access, correct or delete on our side. All data can
 be removed from the device as described in section 1. For data held by your VPN
 or provisioning server, contact its operator. Under the GDPR you may also lodge
@@ -167,8 +208,8 @@ a complaint with your supervisory authority (in Slovakia: Úrad na ochranu
 osobných údajov SR).</p>
 <h2>9. Changes</h2>
 <p>If this policy changes, the new version will be published at this address with
-a new effective date. Material changes will also be noted in the app's release
-notes.</p>
+a new "last updated" date. Material changes will also be noted in the apps'
+release notes.</p>
 <h2>10. Contact</h2>
 <p>ProIT services — <a href="mailto:develop@pro-it.sk">develop@pro-it.sk</a></p>
 </main>

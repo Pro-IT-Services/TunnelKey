@@ -75,7 +75,7 @@
     <!-- About -->
     <string name="about_body">Open-source OpenVPN client with authenticator-code support, by ProIT services.\n\nNo analytics, no ads, no accounts: profiles, passwords and 2FA secrets stay on this phone.\n\nLicensed under the GNU AGPL v3. Built on the OpenVPN 3 core, mbed TLS, asio, fmt and LZ4.\n\n%1$s</string>
     <string name="action_privacy">Privacy policy</string>
-    <string name="privacy_url" translatable="false">https://kalipsers.github.io/TunnelKey/privacy-policy.html</string>
+    <string name="privacy_url" translatable="false">https://pro-it-services.github.io/TunnelKey/privacy-policy.html</string>
 
     <!-- Errors -->
     <string name="error_import">Couldn\'t import profile</string>

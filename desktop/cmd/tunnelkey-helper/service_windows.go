@@ -7,8 +7,8 @@ import (
 
 	"golang.org/x/sys/windows/svc"
 
-	"github.com/kalipsers/TunnelKey/desktop/internal/helper"
-	"github.com/kalipsers/TunnelKey/desktop/internal/ipc"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/helper"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ipc"
 )
 
 // ServiceName as registered by the installer.

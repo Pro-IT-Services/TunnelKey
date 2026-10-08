@@ -1,6 +1,6 @@
 [Unit]
 Description=Tunnelkey helper (starts OpenVPN for the Tunnelkey app)
-Documentation=https://github.com/kalipsers/TunnelKey
+Documentation=https://github.com/Pro-IT-Services/TunnelKey
 After=network.target
 Wants=network.target
 

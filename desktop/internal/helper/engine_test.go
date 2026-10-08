@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kalipsers/TunnelKey/desktop/internal/ipc"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ipc"
 )
 
 // The test binary doubles as a fake openvpn that speaks the management

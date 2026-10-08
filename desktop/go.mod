@@ -1,4 +1,4 @@
-module github.com/kalipsers/TunnelKey/desktop
+module github.com/Pro-IT-Services/TunnelKey/desktop
 
 go 1.26.0
 

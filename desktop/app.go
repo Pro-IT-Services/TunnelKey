@@ -12,16 +12,16 @@ import (
 
 	wruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
-	"github.com/kalipsers/TunnelKey/desktop/internal/hello"
-	"github.com/kalipsers/TunnelKey/desktop/internal/helperclient"
-	"github.com/kalipsers/TunnelKey/desktop/internal/ipc"
-	"github.com/kalipsers/TunnelKey/desktop/internal/links"
-	"github.com/kalipsers/TunnelKey/desktop/internal/ovpn"
-	"github.com/kalipsers/TunnelKey/desktop/internal/pinpolicy"
-	"github.com/kalipsers/TunnelKey/desktop/internal/setupfile"
-	"github.com/kalipsers/TunnelKey/desktop/internal/store"
-	"github.com/kalipsers/TunnelKey/desktop/internal/totp"
-	"github.com/kalipsers/TunnelKey/desktop/internal/vault"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/hello"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/helperclient"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ipc"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/links"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ovpn"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/pinpolicy"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/setupfile"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/store"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/totp"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/vault"
 )
 
 // version is set by the build.

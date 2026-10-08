@@ -637,7 +637,7 @@ function desktopCard(name, getPayload) {
 function footer() {
   return h("p", { class: "footer no-print" },
     "Tunnelkey · open source (AGPL-3.0) · ",
-    h("a", { href: "https://github.com/kalipsers/TunnelKey", rel: "noopener", text: "GitHub" }),
+    h("a", { href: "https://github.com/Pro-IT-Services/TunnelKey", rel: "noopener", text: "GitHub" }),
     " · ",
     h("a", { href: "../privacy-policy.html", text: "Privacy policy" }));
 }

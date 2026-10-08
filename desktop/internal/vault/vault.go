@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kalipsers/TunnelKey/desktop/internal/protect"
+	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/protect"
 )
 
 // Method protecting the vault.

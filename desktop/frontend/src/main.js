@@ -7,7 +7,7 @@ import { setLanguage, t, has } from "./i18n.js";
 import { statusHero } from "./hero.js";
 
 const root = document.getElementById("app");
-const PRIVACY_URL = "https://kalipsers.github.io/TunnelKey/privacy-policy.html";
+const PRIVACY_URL = "https://pro-it-services.github.io/TunnelKey/privacy-policy.html";
 const LOCK_AFTER_HIDDEN_MS = 30_000;
 
 let state = null;
