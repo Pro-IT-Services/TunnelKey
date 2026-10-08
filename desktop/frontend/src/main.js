@@ -739,12 +739,17 @@ function setupOpenView() {
 function setupSummaryView() {
   const s = setupSummary;
   if (!s) return homeView();
-  let choice = s.needsLock ? (state.helloAvailable ? "hello" : "pin") : (state.helloAvailable ? "hello" : "pin");
+  // 2FA codes are only generated automatically behind Windows Hello
+  // fingerprint/face; with any other choice the user types them.
+  const typed = s.hasTotp ? t("setup_totp_typed") : "";
+  let choice = state.helloAvailable ? "hello" : s.needsLock || !s.hasTotp ? "pin" : "none";
   const err = h("p.form-error", { role: "alert" });
   const options = [];
-  if (state.helloAvailable) options.push(["hello", t("setup_use_hello"), t("setup_use_hello_body"), "face"]);
-  options.push(["pin", t("setup_use_pin"), t("setup_use_pin_body"), "key"]);
-  if (!s.needsLock) options.push(["none", t("setup_no_lock"), "", "lock"]);
+  if (state.helloAvailable) {
+    options.push(["hello", t("setup_use_hello"), t(s.hasTotp ? "setup_use_hello_body_totp" : "setup_use_hello_body"), "face"]);
+  }
+  options.push(["pin", t("setup_use_pin"), [t("setup_use_pin_body"), typed].filter(Boolean).join(" "), "key"]);
+  if (!s.needsLock) options.push(["none", t("setup_no_lock"), typed, "lock"]);
   const choices = h("div.choices", { role: "radiogroup" }, options.map(([v, title, body, ic]) =>
     h("button.choice" + (v === choice ? ".selected" : ""), {
       type: "button", role: "radio", "aria-checked": String(v === choice),
@@ -758,7 +763,7 @@ function setupSummaryView() {
   ));
   const items = [t("setup_item_vpn")];
   if (s.hasPassword) items.push(t("setup_item_password"));
-  if (s.hasTotp) items.push(t("setup_item_totp"));
+  if (s.hasTotp) items.push(t(state.helloAvailable ? "setup_item_totp" : "setup_item_totp_typed"));
   if (s.links.length) items.push(t("setup_item_links", s.links.length));
   const cont = h("button.btn.btn-primary.btn-wide", {
     onclick: async () => {
@@ -779,6 +784,8 @@ function setupSummaryView() {
     h("main.content",
       h("section.section", h("h3.section-title", t("setup_contains")), h("ul.checklist", items.map((i) => h("li", icon("check", 18), i)))),
       s.replaces ? h("div.banner.banner-warn", icon("alert"), h("p", t("setup_replace_warning", s.replaces))) : null,
+      s.totpNeedsHello ? h("div.banner.banner-warn", { role: "note" }, icon("alert"),
+        h("div", h("strong", t("totp_no_hello_title")), h("p", t("totp_no_hello_body_" + platformKey())))) : null,
       h("p.muted", t(s.needsLock ? "setup_lock_required" : "setup_lock_optional")),
       choices, err, cont,
     ));
@@ -843,7 +850,8 @@ function securityView() {
     } }, icon("face"), h("span.choice-title", t("security_switch_hello"))));
   }
   actions.push(h("button.choice", { type: "button", onclick: () => go("setup-pin", { purpose: "change" }) },
-    icon("key"), h("span.choice-title", t(m.lockMethod === "pin" ? "security_change_pin" : "security_switch_pin"))));
+    icon("key"), h("div", h("span.choice-title", t(m.lockMethod === "pin" ? "security_change_pin" : "security_switch_pin")),
+      m.hasTotp ? h("span.choice-body", t("security_pin_drops_totp")) : null)));
   return h("div.screen", topBar(t("security_title"), [], () => go("home")),
     h("main.content", h("div.banner.banner-info", icon("shield"), h("p", t(current))), h("div.choices", actions), err));
 }

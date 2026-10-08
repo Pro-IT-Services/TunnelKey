@@ -23,7 +23,7 @@ const connected = { phase: "connected", vpnAddress: "10.8.0.6", server: "203.0.1
 const s = {
   version: "1.0.0", platform: "windows", language: "", helperUp: scenario !== "helper-down", helperVersion: "1.0.0",
   status: { phase: "disconnected" }, profiles: scenario === "empty" ? [] : profiles, managed: null,
-  locked: false, helloAvailable: true, weakKeyStorage: false, retryIn: 0,
+  locked: false, helloAvailable: !location.search.includes("nohello"), weakKeyStorage: false, retryIn: 0,
 };
 if (scenario === "connected") s.status = connected;
 if (scenario === "failed") s.status = { phase: "failed", failure: "auth_failed" };
@@ -67,7 +67,7 @@ window.go = { main: { App: {
   OpenSetupFile: async (_p, pw) => {
     await delay(500);
     if (pw !== "correct-horse") throw "wrong_password";
-    return { name: "ProIT Office", remote: managed.remote, hasTotp: true, hasPassword: true, manualCode: false, links: managed.links, needsLock: true };
+    return { name: "ProIT Office", remote: managed.remote, hasTotp: true, hasPassword: true, manualCode: false, links: managed.links, needsLock: true, totpNeedsHello: !s.helloAvailable };
   },
   InstallSetup: async () => { s.managed = { ...managed }; emit("state"); },
   SaveDraft: async () => "p3",

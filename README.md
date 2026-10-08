@@ -143,7 +143,11 @@ A configuration that includes a password or TOTP secret must be locked:
 
 - **Windows Hello** (desktop app on Windows) — the secrets are sealed with a
   key protected by Windows (DPAPI) and only opened after Windows Hello confirms
-  the user.
+  the user. The desktop app keeps a provisioned **TOTP secret only behind
+  Windows Hello fingerprint or face recognition**; without it (or with a PIN
+  lock, or on macOS/Linux) the secret is not stored and the user types the code
+  at every connect. Secrets stored under a PIN by earlier versions are erased
+  at the next unlock.
 - **Fingerprint / face** — Android: AES-256-GCM key in the Android Keystore
   usable only after a strong biometric check, invalidated when biometrics
   change. iOS: Keychain item with `.biometryCurrentSet` access control.

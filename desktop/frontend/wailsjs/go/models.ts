@@ -282,6 +282,7 @@ export namespace main {
 	    links: setupfile.Link[];
 	    needsLock: boolean;
 	    replaces?: string;
+	    totpNeedsHello: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SetupSummary(source);
@@ -297,6 +298,7 @@ export namespace main {
 	        this.links = this.convertValues(source["links"], setupfile.Link);
 	        this.needsLock = source["needsLock"];
 	        this.replaces = source["replaces"];
+	        this.totpNeedsHello = source["totpNeedsHello"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

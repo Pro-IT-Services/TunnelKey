@@ -20,7 +20,7 @@ To work, the apps store the following **only on your device**:
 | VPN profiles (`.ovpn` files, including certificates and private keys) | Connecting to your VPN server | Phones: app-private storage. Desktop: encrypted with a key protected by your operating-system account (see below) |
 | Username | Signing in to your VPN server | App-private storage |
 | Password (only if you choose to save it, or your administrator provisions it) | Signing in to your VPN server | Encrypted with a key in the Android Keystore / iOS Keychain, or on desktop with your account's key store |
-| Two-factor (TOTP) secret (only when provisioned by your administrator) | Generating sign-in codes on the device | Encrypted; protected by fingerprint/face (phones), Windows Hello (Windows) or an 8-digit PIN |
+| Two-factor (TOTP) secret (only when provisioned by your administrator) | Generating sign-in codes on the device | Encrypted; phones: protected by fingerprint/face or an 8-digit PIN. Desktop: stored only on Windows with Windows Hello fingerprint or face recognition — otherwise it is not stored at all and you type the code each time |
 | Links added by your administrator | Opening intranet sites, Remote Desktop or other apps | App-private storage |
 | Connection log (connection events, server address, errors) | Showing you what happened, for troubleshooting | Kept in memory; shared only if *you* copy or share it |
 
