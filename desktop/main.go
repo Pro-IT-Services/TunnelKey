@@ -37,7 +37,7 @@ func main() {
 		OnStartup:        app.startup,
 		OnShutdown:       func(context.Context) { app.stopTray() },
 		// With a tray icon, closing the window hides it; Quit is in the tray menu.
-		HideWindowOnClose: trayAvailable,
+		HideWindowOnClose: true,
 		Bind:              []interface{}{app},
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId:               "com.proitservices.tunnelkey",
