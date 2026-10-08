@@ -24,3 +24,30 @@ desktop/frontend/package.json.md5
 
 # Vite cache from previewing docs/ locally
 docs/.vite/
+
+# Keys, certificates and credentials: never commit these.
+*.jks
+*.keystore
+keystore.properties
+*.pfx
+*.p12
+*.p8
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+.env.*
+!.env.example
+secret.key
+master.key
+# Code-signing configuration (account details live outside the repo);
+# only the example is tracked.
+desktop/signing/*.json
+!desktop/signing/metadata.example.json
+# Real setup files and profiles; the shared test vectors are tracked.
+*.tunnelkey
+!server/testdata/setup_v1.tunnelkey
+!android/app/src/test/resources/setup_v1.tunnelkey
+!ios/TunnelkeyTests/setup_v1.tunnelkey
+*.ovpn
+*.conf.ovpn
