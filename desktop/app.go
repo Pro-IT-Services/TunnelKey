@@ -19,7 +19,6 @@ import (
 	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ipc"
 	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/links"
 	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/ovpn"
-	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/pinpolicy"
 	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/setupfile"
 	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/store"
 	"github.com/Pro-IT-Services/TunnelKey/desktop/internal/totp"
@@ -510,8 +509,10 @@ type SetupSummary struct {
 	HasPassword bool             `json:"hasPassword"`
 	ManualCode  bool             `json:"manualCode"`
 	Links       []setupfile.Link `json:"links"`
-	NeedsLock   bool             `json:"needsLock"` // a password is stored: Hello or PIN required
-	Replaces    string           `json:"replaces,omitempty"`
+	// CanUseHello: the 2FA secret can be kept behind Windows Hello
+	// fingerprint/face so codes are filled in automatically.
+	CanUseHello bool   `json:"canUseHello"`
+	Replaces    string `json:"replaces,omitempty"`
 	// TOTPNeedsHello: the file has a 2FA secret, but without Windows Hello
 	// fingerprint/face it is not stored and the user types the codes.
 	TOTPNeedsHello bool `json:"totpNeedsHello"`
@@ -546,23 +547,28 @@ func (a *App) OpenSetupFile(path, password string) (*SetupSummary, error) {
 	a.mu.Lock()
 	a.pendingSetup = p
 	a.mu.Unlock()
+	return a.summaryFor(p), nil
+}
+
+func (a *App) summaryFor(p *setupfile.Payload) *SetupSummary {
 	sum := &SetupSummary{Name: p.Name, Remote: ovpn.Inspect(p.OVPN).Remote, HasTOTP: p.TOTP != nil,
 		HasPassword: p.Password != "", ManualCode: p.TOTP == nil && p.ManualCode, Links: p.Links,
-		NeedsLock: p.Password != "", TOTPNeedsHello: p.TOTP != nil && !a.helloAvailable}
+		CanUseHello: p.TOTP != nil && a.helloAvailable, TOTPNeedsHello: p.TOTP != nil && !a.helloAvailable}
 	if sum.Links == nil {
 		sum.Links = []setupfile.Link{}
 	}
 	if m := a.store.Managed(); m != nil {
 		sum.Replaces = m.Name
 	}
-	return sum, nil
+	return sum
 }
 
-// CheckPin returns "" for an acceptable PIN or the broken rule.
-func (a *App) CheckPin(pin string) string { return string(pinpolicy.Check(pin)) }
-
-// InstallSetup stores the opened setup file. method: hello, pin or none.
-func (a *App) InstallSetup(method, pin string) error {
+// InstallSetup stores the opened setup file. method "hello" keeps the 2FA
+// secret behind Windows Hello fingerprint/face (automatic codes); "none"
+// drops it and the user types codes. A provisioned password is always kept,
+// sealed with the user's key like a remembered password. The desktop app has
+// no PIN lock: a lock only exists to protect automatic codes.
+func (a *App) InstallSetup(method string) error {
 	a.mu.Lock()
 	p := a.pendingSetup
 	a.mu.Unlock()
@@ -570,23 +576,19 @@ func (a *App) InstallSetup(method, pin string) error {
 		return errors.New("setup_expired")
 	}
 	m := vault.Method(method)
-	// The 2FA secret is only kept behind Windows Hello biometrics; otherwise
-	// it is dropped and the user types the code at every connect.
-	keepTOTP := p.TOTP != nil && m == vault.Hello
-	needsLock := p.Password != "" || keepTOTP
+	if m == vault.Hello && p.TOTP == nil {
+		m = vault.None // nothing that needs Windows Hello
+	}
+	keepTOTP := m == vault.Hello
 	switch {
-	case m == vault.Pin && pinpolicy.Check(pin) != pinpolicy.OK:
-		return errors.New("weak_pin")
 	case m == vault.Hello && !a.helloAvailable:
 		return errors.New("hello_unavailable")
 	case m == vault.Hello:
-		if err := hello.Verify(windowTitle, "Protect the sign-in secrets of "+p.Name); err != nil {
+		if err := hello.Verify(windowTitle, "Fill in 2FA codes for "+p.Name); err != nil {
 			return helloError(err)
 		}
-	case m == vault.None && needsLock:
-		return errors.New("lock_required")
-	case m != vault.Pin && m != vault.Hello && m != vault.None:
-		return errors.New("lock_required")
+	case m != vault.None:
+		return errors.New("lock_unsupported")
 	}
 
 	// Replace any earlier provisioned configuration.
@@ -606,7 +608,7 @@ func (a *App) InstallSetup(method, pin string) error {
 	if keepTOTP {
 		secrets.TOTPSecret = p.TOTP.Secret
 	}
-	if err := a.vault.Store(m, pin, secrets); err != nil {
+	if err := a.vault.Store(m, "", secrets); err != nil {
 		return err
 	}
 	if err := a.store.SaveProfile(prof, ovpn.Normalize(p.OVPN)); err != nil {
@@ -682,7 +684,9 @@ func (a *App) UnlockWithPin(pin string) (UnlockResult, error) {
 	if err != nil {
 		return UnlockResult{}, err
 	}
-	a.dropTOTPSecret(vault.Pin, pin, r.Secrets)
+	// Earlier versions locked with a PIN; the desktop app no longer does.
+	// After this last PIN unlock the lock and the 2FA secret are gone.
+	a.unlockForGood(r.Secrets)
 	a.mu.Lock()
 	a.secrets = r.Secrets
 	a.mu.Unlock()
@@ -715,8 +719,8 @@ func (a *App) UnlockWithHello() error {
 		return err
 	}
 	if !a.helloAvailable {
-		// Fingerprint/face was removed: stop generating codes.
-		a.dropTOTPSecret(vault.Hello, "", s)
+		// Fingerprint/face was removed: stop generating codes, drop the lock.
+		a.unlockForGood(s)
 	}
 	a.mu.Lock()
 	a.secrets = s
@@ -764,57 +768,30 @@ func (a *App) Lock() {
 	}
 }
 
-// ChangeLock re-protects the unlocked secrets with another method.
-func (a *App) ChangeLock(method, pin string) error {
+// TurnOffHello stops filling in 2FA codes: the 2FA secret is erased, the
+// lock removed, and the user types codes from now on.
+func (a *App) TurnOffHello() error {
 	a.mu.Lock()
-	s := a.secrets
+	sec := a.secrets
 	a.mu.Unlock()
-	if s == nil {
+	if sec == nil {
 		return errors.New("locked")
 	}
-	m := vault.Method(method)
-	switch m {
-	case vault.Pin:
-		if pinpolicy.Check(pin) != pinpolicy.OK {
-			return errors.New("weak_pin")
-		}
-	case vault.Hello:
-		if !a.helloAvailable {
-			return errors.New("hello_unavailable")
-		}
-		if err := hello.Verify(windowTitle, "Use Windows Hello for Tunnelkey"); err != nil {
-			return helloError(err)
-		}
-	default:
-		return errors.New("lock_required")
-	}
-	if m != vault.Hello && s.TOTPSecret != "" {
-		// Leaving Windows Hello: the 2FA secret is not kept behind a PIN.
-		return a.dropTOTPSecret(m, pin, s)
-	}
-	if err := a.vault.Store(m, pin, *s); err != nil {
-		return err
-	}
-	a.changed()
-	return nil
+	return a.unlockForGood(sec)
 }
 
-// dropTOTPSecret erases a stored 2FA secret that is not protected by Windows
-// Hello biometrics; from then on the user types the code at every connect.
-// The remaining secrets are stored again with method (None when nothing is
-// left to protect).
-func (a *App) dropTOTPSecret(method vault.Method, pin string, s *vault.Secrets) error {
-	if s == nil || s.TOTPSecret == "" {
+// unlockForGood erases a stored 2FA secret and keeps the remaining secrets
+// (the password) without a lock, sealed with the user's key.
+func (a *App) unlockForGood(sec *vault.Secrets) error {
+	if sec == nil {
 		return nil
 	}
-	s.TOTPSecret = ""
-	if s.Password == "" {
-		method, pin = vault.None, ""
-	}
-	if err := a.vault.Store(method, pin, *s); err != nil {
+	hadTOTP := sec.TOTPSecret != ""
+	sec.TOTPSecret = ""
+	if err := a.vault.Store(vault.None, "", *sec); err != nil {
 		return err
 	}
-	if m := a.store.Managed(); m != nil {
+	if m := a.store.Managed(); m != nil && hadTOTP {
 		m.HasTOTP, m.ManualCode = false, true
 		if err := a.store.SetManaged(m); err != nil {
 			return err

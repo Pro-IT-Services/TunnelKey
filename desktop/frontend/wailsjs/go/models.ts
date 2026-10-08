@@ -280,7 +280,7 @@ export namespace main {
 	    hasPassword: boolean;
 	    manualCode: boolean;
 	    links: setupfile.Link[];
-	    needsLock: boolean;
+	    canUseHello: boolean;
 	    replaces?: string;
 	    totpNeedsHello: boolean;
 	
@@ -296,7 +296,7 @@ export namespace main {
 	        this.hasPassword = source["hasPassword"];
 	        this.manualCode = source["manualCode"];
 	        this.links = this.convertValues(source["links"], setupfile.Link);
-	        this.needsLock = source["needsLock"];
+	        this.canUseHello = source["canUseHello"];
 	        this.replaces = source["replaces"];
 	        this.totpNeedsHello = source["totpNeedsHello"];
 	    }

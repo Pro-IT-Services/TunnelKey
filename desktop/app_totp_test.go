@@ -27,55 +27,75 @@ func provisioned() *setupfile.Payload {
 	}
 }
 
-// Without Windows Hello fingerprint/face the 2FA secret is never stored.
-func TestTOTPNotStoredWithoutBiometrics(t *testing.T) {
+// Without Windows Hello fingerprint/face: no lock, no 2FA secret, password kept.
+func TestNoBiometricsMeansNoLockAndNoSecret(t *testing.T) {
 	a := testApp(t, false)
 	a.pendingSetup = provisioned()
-	if err := a.InstallSetup("hello", ""); err == nil || err.Error() != "hello_unavailable" {
+	sum := a.summaryFor(a.pendingSetup)
+	if sum.CanUseHello || !sum.TOTPNeedsHello {
+		t.Fatalf("flags %+v", sum)
+	}
+	if err := a.InstallSetup("hello"); err == nil || err.Error() != "hello_unavailable" {
 		t.Fatalf("hello without biometrics: %v", err)
 	}
-	if err := a.InstallSetup("pin", testPin); err != nil {
+	if err := a.InstallSetup("pin"); err == nil {
+		t.Fatal("PIN accepted")
+	}
+	if err := a.InstallSetup("none"); err != nil {
 		t.Fatal(err)
 	}
-	m := a.store.Managed()
-	if m.HasTOTP || !m.ManualCode {
+	if a.vault.Method() != vault.None || a.State().Locked {
+		t.Fatalf("locked: method %q", a.vault.Method())
+	}
+	if m := a.store.Managed(); m.HasTOTP || !m.ManualCode || !m.HasPassword {
 		t.Fatalf("managed %+v", m)
 	}
-	r, err := a.vault.UnlockWithPin(testPin)
-	if err != nil || r.Secrets.TOTPSecret != "" || r.Secrets.Password != "pw" {
-		t.Fatalf("vault %+v %v", r.Secrets, err)
+	sec, err := a.vault.Open()
+	if err != nil || sec.TOTPSecret != "" || sec.Password != "pw" {
+		t.Fatalf("vault %+v %v", sec, err)
 	}
 }
 
-// A secret stored behind a PIN by an earlier version is erased at unlock.
-func TestPinUnlockDropsOldTOTPSecret(t *testing.T) {
+// A PIN lock from an earlier version is removed at its last unlock, with the 2FA secret.
+func TestLegacyPinUnlockRemovesLock(t *testing.T) {
 	a := testApp(t, false)
 	p := store.Profile{ID: "m1", Name: "Office", Managed: true, TwoFactor: true, CodeLength: 6, NeedsCredentials: true}
 	a.store.SaveProfile(p, "client\nremote x\n")
 	a.store.SetManaged(&store.Managed{ProfileID: "m1", Name: "Office", HasTOTP: true, HasPassword: true, TOTPDigits: 6, TOTPPeriod: 30})
 	a.vault.Store(vault.Pin, testPin, vault.Secrets{Password: "pw", TOTPSecret: "JBSWY3DPEHPK3PXP"})
-
+	if !a.State().Locked {
+		t.Fatal("legacy PIN vault should start locked")
+	}
 	r, err := a.UnlockWithPin(testPin)
 	if err != nil || !r.OK {
 		t.Fatalf("%+v %v", r, err)
 	}
-	if a.secrets.TOTPSecret != "" || a.store.Managed().HasTOTP || !a.store.Managed().ManualCode {
-		t.Fatal("2FA secret kept")
+	if a.vault.Method() != vault.None || a.store.Managed().HasTOTP || !a.store.Managed().ManualCode {
+		t.Fatalf("method %q managed %+v", a.vault.Method(), a.store.Managed())
 	}
-	again, _ := a.vault.UnlockWithPin(testPin)
-	if again.Secrets == nil || again.Secrets.TOTPSecret != "" || again.Secrets.Password != "pw" {
-		t.Fatalf("vault after drop: %+v", again.Secrets)
+	a.Lock()
+	if a.State().Locked {
+		t.Fatal("still locks after the last PIN unlock")
+	}
+	sec, _ := a.vault.Open()
+	if sec.TOTPSecret != "" || sec.Password != "pw" {
+		t.Fatalf("vault %+v", sec)
 	}
 }
 
-// With biometrics but a PIN chosen, codes are typed too.
-func TestPinChoiceDropsTOTPEvenWithBiometrics(t *testing.T) {
+// Without a 2FA secret in the file, Windows Hello isn't involved at all.
+func TestNoTOTPMeansNoHello(t *testing.T) {
 	a := testApp(t, true)
-	a.pendingSetup = provisioned()
-	if err := a.InstallSetup("pin", testPin); err != nil {
+	p := provisioned()
+	p.TOTP = nil
+	a.pendingSetup = p
+	if f := a.summaryFor(p); f.CanUseHello {
+		t.Fatal("Hello offered without a 2FA secret")
+	}
+	if err := a.InstallSetup("hello"); err != nil { // falls back to no lock
 		t.Fatal(err)
 	}
-	if m := a.store.Managed(); m.HasTOTP || !m.ManualCode {
-		t.Fatalf("managed %+v", m)
+	if a.vault.Method() != vault.None {
+		t.Fatalf("method %q", a.vault.Method())
 	}
 }

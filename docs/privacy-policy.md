@@ -118,7 +118,8 @@ country).
 ## 7. Security
 
 Secrets are encrypted with hardware-backed or operating-system-protected keys,
-the apps can be locked with biometrics, Windows Hello or a strong PIN, and the
+the phone apps can be locked with biometrics or a strong PIN, the desktop app
+keeps 2FA secrets only behind Windows Hello fingerprint or face recognition, and the
 source code is public for independent review:
 <https://github.com/Pro-IT-Services/TunnelKey>.
 

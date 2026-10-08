@@ -89,7 +89,6 @@ function render() {
       case "security": view = securityView(); break;
       case "setup-open": view = setupOpenView(); break;
       case "setup-summary": view = setupSummaryView(); break;
-      case "setup-pin": view = pinCreateView(); break;
       default: view = state.managed ? managedView() : homeView();
     }
   }
@@ -562,14 +561,14 @@ function managedView() {
         )),
       )
     : null;
-  const lockItems = m.lockMethod === "pin" || m.lockMethod === "hello";
+  const usesHello = m.lockMethod === "hello";
   return h(
     "div.screen",
     topBar(m.name, [
       menu([
         { icon: "log", label: t("action_logs"), action: () => go("logs") },
-        lockItems ? { icon: "shield", label: t("action_settings"), action: () => go("security") } : null,
-        lockItems ? { icon: "lock", label: t("action_lock_now"), action: () => call("Lock") } : null,
+        usesHello ? { icon: "shield", label: t("action_settings"), action: () => go("security") } : null,
+        usesHello ? { icon: "lock", label: t("action_lock_now"), action: () => call("Lock") } : null,
         languageItem(),
         { icon: "info", label: t("action_about"), action: () => go("about") },
         "-",
@@ -739,39 +738,37 @@ function setupOpenView() {
 function setupSummaryView() {
   const s = setupSummary;
   if (!s) return homeView();
-  // 2FA codes are only generated automatically behind Windows Hello
-  // fingerprint/face; with any other choice the user types them.
-  const typed = s.hasTotp ? t("setup_totp_typed") : "";
-  let choice = state.helloAvailable ? "hello" : s.needsLock || !s.hasTotp ? "pin" : "none";
+  // Windows Hello is only used to keep the 2FA secret for automatic codes.
+  let choice = s.canUseHello ? "hello" : "none";
   const err = h("p.form-error", { role: "alert" });
-  const options = [];
-  if (state.helloAvailable) {
-    options.push(["hello", t("setup_use_hello"), t(s.hasTotp ? "setup_use_hello_body_totp" : "setup_use_hello_body"), "face"]);
+  let choices = null;
+  if (s.canUseHello) {
+    const options = [
+      ["hello", t("setup_use_hello"), t("setup_use_hello_body_totp"), "face"],
+      ["none", t("setup_no_hello"), t("setup_no_hello_body"), "key"],
+    ];
+    choices = h("div.choices", { role: "radiogroup" }, options.map(([v, title, body, ic]) =>
+      h("button.choice" + (v === choice ? ".selected" : ""), {
+        type: "button", role: "radio", "aria-checked": String(v === choice),
+        onclick: (e) => {
+          choice = v;
+          choices.querySelectorAll(".choice").forEach((c) => { c.classList.remove("selected"); c.setAttribute("aria-checked", "false"); });
+          e.currentTarget.classList.add("selected");
+          e.currentTarget.setAttribute("aria-checked", "true");
+        },
+      }, icon(ic), h("div", h("span.choice-title", title), h("span.choice-body", body)))));
   }
-  options.push(["pin", t("setup_use_pin"), [t("setup_use_pin_body"), typed].filter(Boolean).join(" "), "key"]);
-  if (!s.needsLock) options.push(["none", t("setup_no_lock"), typed, "lock"]);
-  const choices = h("div.choices", { role: "radiogroup" }, options.map(([v, title, body, ic]) =>
-    h("button.choice" + (v === choice ? ".selected" : ""), {
-      type: "button", role: "radio", "aria-checked": String(v === choice),
-      onclick: (e) => {
-        choice = v;
-        choices.querySelectorAll(".choice").forEach((c) => { c.classList.remove("selected"); c.setAttribute("aria-checked", "false"); });
-        e.currentTarget.classList.add("selected");
-        e.currentTarget.setAttribute("aria-checked", "true");
-      },
-    }, icon(ic), h("div", h("span.choice-title", title), body ? h("span.choice-body", body) : null)),
-  ));
   const items = [t("setup_item_vpn")];
   if (s.hasPassword) items.push(t("setup_item_password"));
-  if (s.hasTotp) items.push(t(state.helloAvailable ? "setup_item_totp" : "setup_item_totp_typed"));
+  if (s.hasTotp) items.push(t(s.canUseHello ? "setup_item_totp_choice" : "setup_item_totp_typed"));
+  if (s.manualCode) items.push(t("setup_item_totp_typed"));
   if (s.links.length) items.push(t("setup_item_links", s.links.length));
   const cont = h("button.btn.btn-primary.btn-wide", {
     onclick: async () => {
       err.textContent = "";
-      if (choice === "pin") return go("setup-pin", { purpose: "install" });
       cont.disabled = true;
       try {
-        await call("InstallSetup", choice, "");
+        await call("InstallSetup", choice);
         setupSummary = null;
         go("home");
       } catch (x) {
@@ -779,81 +776,37 @@ function setupSummaryView() {
         cont.disabled = false;
       }
     },
-  }, t("action_ok"));
-  return h("div.screen", topBar(t("setup_title", s.name), [], () => go("home")),
+  }, t("setup_install"));
+  return h("div.screen", topBar(s.name, [], () => go("home")),
     h("main.content",
       h("section.section", h("h3.section-title", t("setup_contains")), h("ul.checklist", items.map((i) => h("li", icon("check", 18), i)))),
       s.replaces ? h("div.banner.banner-warn", icon("alert"), h("p", t("setup_replace_warning", s.replaces))) : null,
       s.totpNeedsHello ? h("div.banner.banner-warn", { role: "note" }, icon("alert"),
         h("div", h("strong", t("totp_no_hello_title")), h("p", t("totp_no_hello_body_" + platformKey())))) : null,
-      h("p.muted", t(s.needsLock ? "setup_lock_required" : "setup_lock_optional")),
+      choices ? h("p.muted", t("setup_hello_only_for_codes")) : null,
       choices, err, cont,
     ));
-}
-
-/** Choose + confirm an 8-digit PIN (install or change). */
-function pinCreateView() {
-  let first = null;
-  const title = h("h2.pin-title", t("pin_create_title"));
-  const sub = h("p.muted.center", t("pin_create_body"));
-  const err = h("p.form-error.center", { role: "alert" });
-  const pad = pinPad({
-    onComplete: async (pin) => {
-      err.textContent = "";
-      if (first == null) {
-        const problem = await call("CheckPin", pin);
-        pad.reset();
-        if (problem) return (err.textContent = t("pin_problem_" + problem));
-        first = pin;
-        title.textContent = t("pin_confirm_title");
-        sub.textContent = "";
-        return;
-      }
-      pad.reset();
-      if (pin !== first) {
-        first = null;
-        title.textContent = t("pin_create_title");
-        sub.textContent = t("pin_create_body");
-        return (err.textContent = t("pin_mismatch"));
-      }
-      try {
-        if (page.purpose === "change") {
-          await call("ChangeLock", "pin", pin);
-          toast(t("security_updated"));
-          go("home");
-        } else {
-          await call("InstallSetup", "pin", pin);
-          setupSummary = null;
-          go("home");
-        }
-      } catch (x) {
-        first = null;
-        title.textContent = t("pin_create_title");
-        err.textContent = errorText(x);
-      }
-    },
-  });
-  const back = () => go(page.purpose === "change" ? "security" : "setup-summary");
-  return h("div.screen", topBar("", [], back), h("main.content.pin-page", title, sub, pad, err));
 }
 
 // ---- Security ----------------------------------------------------------------------------
 
 function securityView() {
-  const m = state.managed;
-  const current = { hello: "security_current_hello", pin: "security_current_pin" }[m.lockMethod] || "security_current_none";
   const err = h("p.form-error", { role: "alert" });
-  const actions = [];
-  if (state.helloAvailable && m.lockMethod !== "hello") {
-    actions.push(h("button.choice", { type: "button", onclick: async () => {
-      try { await call("ChangeLock", "hello", ""); toast(t("security_updated")); go("home"); } catch (x) { err.textContent = errorText(x); }
-    } }, icon("face"), h("span.choice-title", t("security_switch_hello"))));
-  }
-  actions.push(h("button.choice", { type: "button", onclick: () => go("setup-pin", { purpose: "change" }) },
-    icon("key"), h("div", h("span.choice-title", t(m.lockMethod === "pin" ? "security_change_pin" : "security_switch_pin")),
-      m.hasTotp ? h("span.choice-body", t("security_pin_drops_totp")) : null)));
+  const off = h("button.choice", {
+    type: "button",
+    onclick: async () => {
+      if (!(await confirmDialog(t("security_turn_off_title"), t("security_turn_off_body"), t("security_turn_off"), true))) return;
+      try {
+        await call("TurnOffHello");
+        toast(t("security_updated"));
+        go("home");
+      } catch (x) {
+        err.textContent = errorText(x);
+      }
+    },
+  }, icon("face"), h("div", h("span.choice-title", t("security_turn_off")), h("span.choice-body", t("security_turn_off_body"))));
   return h("div.screen", topBar(t("security_title"), [], () => go("home")),
-    h("main.content", h("div.banner.banner-info", icon("shield"), h("p", t(current))), h("div.choices", actions), err));
+    h("main.content", h("div.banner.banner-info", icon("shield"), h("p", t("security_current_hello"))), h("div.choices", off), err));
 }
 
 // ---- Editor -----------------------------------------------------------------------------------

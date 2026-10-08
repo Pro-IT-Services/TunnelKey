@@ -67,7 +67,7 @@ window.go = { main: { App: {
   OpenSetupFile: async (_p, pw) => {
     await delay(500);
     if (pw !== "correct-horse") throw "wrong_password";
-    return { name: "ProIT Office", remote: managed.remote, hasTotp: true, hasPassword: true, manualCode: false, links: managed.links, needsLock: true, totpNeedsHello: !s.helloAvailable };
+    return { name: "ProIT Office", remote: managed.remote, hasTotp: true, hasPassword: true, manualCode: false, links: managed.links, canUseHello: s.helloAvailable, totpNeedsHello: !s.helloAvailable };
   },
   InstallSetup: async () => { s.managed = { ...managed }; emit("state"); },
   SaveDraft: async () => "p3",
