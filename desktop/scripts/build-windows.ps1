@@ -14,8 +14,12 @@
   WixToolset.UI.wixext, WixToolset.Util.wixext and WixToolset.Bal.wixext 4.0.6
   ("wix extension add -g WixToolset.Bal.wixext/4.0.6", same for UI and Util).
 
-  Code signing is off unless SIGN_CERT_SHA1 (certificate thumbprint in the
-  certificate store) or SIGN_PFX (+ SIGN_PFX_PASSWORD) is set. Optional:
+  Code signing is off unless one of these is set:
+    ARTIFACT_SIGNING_METADATA  path to metadata.json for Azure Artifact Signing
+                               (optional ARTIFACT_SIGNING_DLIB); sign in with
+                               `az login` first. See docs/windows-code-signing.md.
+    SIGN_CERT_SHA1             certificate thumbprint in the certificate store
+    SIGN_PFX (+ SIGN_PFX_PASSWORD) Optional:
   SIGNTOOL (path to signtool.exe), SIGN_TIMESTAMP_URL.
 
 .PARAMETER PlaceholderGui
@@ -81,11 +85,32 @@ function Get-SignTool {
     throw 'signing requested but signtool.exe was not found (set SIGNTOOL)'
 }
 
-$SignEnabled = [bool]($env:SIGN_CERT_SHA1 -or $env:SIGN_PFX)
+$SignEnabled = [bool]($env:ARTIFACT_SIGNING_METADATA -or $env:SIGN_CERT_SHA1 -or $env:SIGN_PFX)
+
+# Azure Artifact Signing (formerly Trusted Signing): signtool with Microsoft's
+# dlib and a metadata.json naming the endpoint, account and certificate
+# profile. Sign in first with `az login` (or a service principal / OIDC in CI).
+function Get-ArtifactSigningDlib {
+    if ($env:ARTIFACT_SIGNING_DLIB) { return $env:ARTIFACT_SIGNING_DLIB }
+    $roots = @($env:LOCALAPPDATA, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
+    foreach ($root in $roots) {
+        $found = Get-ChildItem $root -Recurse -Filter 'Azure.CodeSigning.Dlib.dll' -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+        if ($found) { return $found.FullName }
+    }
+    throw 'ARTIFACT_SIGNING_METADATA is set but Azure.CodeSigning.Dlib.dll was not found (install with: winget install -e --id Microsoft.Azure.ArtifactSigningClientTools, or set ARTIFACT_SIGNING_DLIB)'
+}
 
 function Sign-File([string]$path) {
     if (-not $SignEnabled) { return }
     $tool = Get-SignTool
+    if ($env:ARTIFACT_SIGNING_METADATA) {
+        $ts = if ($env:SIGN_TIMESTAMP_URL) { $env:SIGN_TIMESTAMP_URL } else { 'http://timestamp.acs.microsoft.com' }
+        Step "signing $(Split-Path -Leaf $path) (Artifact Signing)"
+        Invoke-Native $tool @('sign', '/v', '/fd', 'SHA256', '/tr', $ts, '/td', 'SHA256', '/d', 'Tunnelkey',
+            '/dlib', (Get-ArtifactSigningDlib), '/dmdf', $env:ARTIFACT_SIGNING_METADATA, $path)
+        return
+    }
     $ts = if ($env:SIGN_TIMESTAMP_URL) { $env:SIGN_TIMESTAMP_URL } else { 'http://timestamp.digicert.com' }
     $signArgs = @('sign', '/fd', 'SHA256', '/tr', $ts, '/td', 'SHA256', '/d', 'Tunnelkey')
     if ($env:SIGN_CERT_SHA1) {
@@ -408,4 +433,4 @@ Get-Item $guiExe, $helperExe, $msi, $setup | ForEach-Object {
     '{0,-34} {1,12} bytes' -f $_.Name, $_.Length
 }
 if ($usedPlaceholder) { Write-Warning 'Tunnelkey.exe is a PLACEHOLDER: these installers are for testing only' }
-if (-not $SignEnabled) { Write-Host 'unsigned build (set SIGN_CERT_SHA1 or SIGN_PFX to sign)' }
+if (-not $SignEnabled) { Write-Host 'unsigned build (set ARTIFACT_SIGNING_METADATA, SIGN_CERT_SHA1 or SIGN_PFX to sign)' }
