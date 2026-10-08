@@ -21,3 +21,6 @@ desktop/frontend/dist/*
 !desktop/frontend/dist/gitkeep
 !desktop/frontend/dist/.gitkeep
 desktop/frontend/package.json.md5
+
+# Vite cache from previewing docs/ locally
+docs/.vite/
