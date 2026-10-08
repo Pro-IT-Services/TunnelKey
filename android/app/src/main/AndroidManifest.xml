@@ -64,12 +64,35 @@
                 <data android:scheme="file" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
+            <!-- Encrypted setup files (.tunnelkey). Apps that don't know the
+                 type often send them as JSON; the app checks the content. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/vnd.tunnelkey.setup+json" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="file" />
+                <data android:scheme="content" />
+                <data android:host="*" />
+                <data android:pathPattern=".*\\.tunnelkey" />
+                <data android:pathPattern=".*\\..*\\.tunnelkey" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/x-openvpn-profile" />
                 <data android:mimeType="application/ovpn" />
                 <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/vnd.tunnelkey.setup+json" />
+                <data android:mimeType="application/json" />
             </intent-filter>
         </activity>
 

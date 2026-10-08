@@ -2,6 +2,7 @@ package app.tunnelkey.data
 
 import android.content.Context
 import android.net.Uri
+import app.tunnelkey.provision.SetupFiles
 import android.provider.OpenableColumns
 import app.tunnelkey.R
 import kotlinx.coroutines.Dispatchers
@@ -40,19 +41,22 @@ class ProfileRepository(private val context: Context, private val secrets: Secre
 
     fun readConfig(id: String): String = File(dir, "$id.ovpn").readText()
 
-    suspend fun readDraft(uri: Uri): ImportDraft = withContext(Dispatchers.IO) {
+    suspend fun readDraft(uri: Uri): ImportDraft = readFile(uri).let { (name, text) -> draftFromText(text, name) }
+
+    /** Name (without extension) and text of an opened file: a profile or a setup file. */
+    suspend fun readFile(uri: Uri): Pair<String, String> = withContext(Dispatchers.IO) {
         val resolver = context.contentResolver
         val name = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c ->
             if (c.moveToFirst()) c.getString(0) else null
         } ?: uri.lastPathSegment ?: "Profile"
 
         val bytes = resolver.openInputStream(uri)?.use { input ->
-            val buffer = input.readNBytesCompat(OvpnInspector.MAX_PROFILE_BYTES + 1)
-            if (buffer.size > OvpnInspector.MAX_PROFILE_BYTES) throw ImportException(R.string.import_too_large)
+            val buffer = input.readNBytesCompat(SetupFiles.MAX_BYTES + 1)
+            if (buffer.size > SetupFiles.MAX_BYTES) throw ImportException(R.string.import_too_large)
             buffer
         } ?: throw ImportException(R.string.import_unreadable)
 
-        draftFromText(String(bytes, Charsets.UTF_8), name.substringBeforeLast('.'))
+        name.substringBeforeLast('.') to String(bytes, Charsets.UTF_8)
     }
 
     /** A profile pasted as text (also used for files). */

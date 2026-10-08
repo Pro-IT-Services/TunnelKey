@@ -15,22 +15,39 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.QrCodeScanner
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import app.tunnelkey.R
 
@@ -49,6 +66,61 @@ class PickProfileFile : ActivityResultContract<Unit, Uri?>() {
 
     override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
         if (resultCode == Activity.RESULT_OK) intent?.data else null
+}
+
+/** Password prompt for an opened .tunnelkey setup file. */
+@Composable
+fun SetupFileDialog(request: SetupFileRequest, onOpen: (String) -> Unit, onDismiss: () -> Unit) {
+    var password by remember(request.text) { mutableStateOf("") }
+    var shown by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = { if (!request.busy) onDismiss() },
+        title = { Text(stringResource(R.string.setup_file_title)) },
+        text = {
+            Column {
+                Text(stringResource(R.string.setup_file_body))
+                Spacer(Modifier.size(4.dp))
+                Text(request.name, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.size(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text(stringResource(R.string.setup_file_password)) },
+                    singleLine = true,
+                    enabled = !request.busy,
+                    isError = request.error != null,
+                    visualTransformation = if (shown) VisualTransformation.None else PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { if (password.isNotEmpty() && !request.busy) onOpen(password) }),
+                    trailingIcon = {
+                        IconButton(onClick = { shown = !shown }) {
+                            Icon(
+                                if (shown) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = stringResource(if (shown) R.string.action_hide_password else R.string.action_show_password),
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                request.error?.let {
+                    Spacer(Modifier.size(8.dp))
+                    Text(stringResource(it), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (request.busy) {
+                    Spacer(Modifier.size(12.dp))
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onOpen(password) }, enabled = password.isNotEmpty() && !request.busy) {
+                Text(stringResource(R.string.setup_file_open))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !request.busy) { Text(stringResource(R.string.action_cancel)) }
+        },
+    )
 }
 
 /** Ways to add a profile: file, clipboard, setup code. */

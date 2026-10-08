@@ -5,31 +5,35 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import app.tunnelkey.R
 import app.tunnelkey.TunnelkeyApp
 import app.tunnelkey.data.CodePosition
 import app.tunnelkey.data.ImportDraft
 import app.tunnelkey.data.ImportException
 import app.tunnelkey.data.Profile
-import app.tunnelkey.vpn.TunnelService
-import app.tunnelkey.vpn.TunnelState
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.delay
-import app.tunnelkey.R
 import app.tunnelkey.managed.ManagedLink
+import app.tunnelkey.provision.SetupFileException
+import app.tunnelkey.provision.SetupFiles
 import app.tunnelkey.provision.SetupPayload
 import app.tunnelkey.vpn.FailureKind
 import app.tunnelkey.vpn.Phase
-import kotlinx.coroutines.Job
+import app.tunnelkey.vpn.TunnelService
+import app.tunnelkey.vpn.TunnelState
 import app.tunnelkey.vpn.TunnelStatus
 import javax.crypto.Cipher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** What the sign-in sheet has to ask for before connecting. */
 data class SignInRequest(
@@ -63,6 +67,9 @@ data class EditorForm(
     val canSave: Boolean get() = name.isNotBlank() && (!needsCredentials || username.isNotBlank())
 }
 
+/** An opened .tunnelkey file waiting for its password. */
+data class SetupFileRequest(val text: String, val name: String, val busy: Boolean = false, val error: Int? = null)
+
 sealed interface UiEvent {
     data object OpenEditor : UiEvent
     data class Error(val title: String, val message: String) : UiEvent
@@ -84,6 +91,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** A scanned setup code waiting for the user to choose a lock. */
     var pendingSetup: SetupPayload? = null
+
+    private val _setupFile = MutableStateFlow<SetupFileRequest?>(null)
+    val setupFile: StateFlow<SetupFileRequest?> = _setupFile.asStateFlow()
 
     /** Short status line in single-config mode (e.g. waiting for a fresh code). */
     private val _hint = MutableStateFlow<String?>(null)
@@ -140,10 +150,61 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---- Import & edit --------------------------------------------------
 
-    fun import(uri: Uri) = openDraft { repo.readDraft(uri) }
+    /**
+     * Opens a file: setup files ask for their password, profiles go to the
+     * editor (not while a provisioned configuration is active).
+     */
+    fun import(uri: Uri, profilesAllowed: Boolean = true) {
+        viewModelScope.launch {
+            try {
+                val (name, text) = repo.readFile(uri)
+                if (SetupFiles.looksLike(text)) {
+                    _setupFile.value = SetupFileRequest(text, name)
+                } else if (profilesAllowed) {
+                    openDraft { repo.draftFromText(text, name) }
+                }
+            } catch (e: ImportException) {
+                _events.send(UiEvent.Error("import", getApplication<Application>().getString(e.messageRes)))
+            }
+        }
+    }
 
     /** Import a profile copied as text. */
-    fun importText(text: String, suggestedName: String) = openDraft { repo.draftFromText(text, suggestedName) }
+    fun importText(text: String, suggestedName: String) {
+        if (SetupFiles.looksLike(text)) {
+            _setupFile.value = SetupFileRequest(text, suggestedName)
+        } else {
+            openDraft { repo.draftFromText(text, suggestedName) }
+        }
+    }
+
+    /** Decrypts the opened setup file; on success it continues like a scanned setup code. */
+    fun openSetupFile(password: String, onOpened: () -> Unit) {
+        val request = _setupFile.value ?: return
+        _setupFile.value = request.copy(busy = true, error = null)
+        viewModelScope.launch {
+            try {
+                val payload = withContext(Dispatchers.Default) { SetupFiles.decrypt(request.text, password) }
+                _setupFile.value = null
+                pendingSetup = payload
+                onOpened()
+            } catch (e: SetupFileException) {
+                _setupFile.value = request.copy(
+                    busy = false,
+                    error = when (e.kind) {
+                        SetupFileException.Kind.WrongPassword -> R.string.setup_file_wrong_password
+                        SetupFileException.Kind.NewerVersion -> R.string.setup_code_newer_version
+                        SetupFileException.Kind.NotSetupFile -> R.string.setup_file_not_setup
+                        SetupFileException.Kind.Damaged -> R.string.setup_file_damaged
+                    },
+                )
+            }
+        }
+    }
+
+    fun dismissSetupFile() {
+        _setupFile.value = null
+    }
 
     private fun openDraft(read: suspend () -> ImportDraft) = viewModelScope.launch {
         try {

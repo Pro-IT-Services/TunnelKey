@@ -189,12 +189,12 @@
 
     <!-- Import -->
     <string name="import_sheet_title">Add a VPN profile</string>
-    <string name="import_choose_file">Choose .ovpn file</string>
-    <string name="import_choose_file_body">Browse with My Files or another file manager.</string>
+    <string name="import_choose_file">Choose a file</string>
+    <string name="import_choose_file_body">An .ovpn profile, or a .tunnelkey setup file from your administrator.</string>
     <string name="import_paste">Paste from clipboard</string>
     <string name="import_paste_body">Copy the profile\'s text first, then paste it here.</string>
     <string name="import_scan_body">Scan the QR code from your administrator.</string>
-    <string name="import_chooser_title">Choose the .ovpn file with</string>
+    <string name="import_chooser_title">Choose the file with</string>
     <string name="import_clipboard_empty">The clipboard doesn\'t contain an OpenVPN profile. Copy the whole file text first.</string>
     <string name="import_pasted_name">Pasted profile</string>
 
@@ -210,4 +210,11 @@
     <string name="vpn_disclosure_title">How Tunnelkey uses the VPN</string>
     <string name="vpn_disclosure_body">To connect, Tunnelkey uses Android\'s VPN service to create an encrypted OpenVPN tunnel to the server in your profile. While connected, this phone\'s network traffic goes through that server, which is run by you or your organisation.\n\nTunnelkey does not collect, log, inspect, modify or sell your traffic or any personal data, and sends nothing to its developer.\n\nNext, Android asks you to allow the VPN connection.</string>
     <string name="vpn_disclosure_accept">Agree and continue</string>
+    <string name="setup_file_title">Open setup file</string>
+    <string name="setup_file_body">Enter the password your administrator gave you for this file.</string>
+    <string name="setup_file_password">File password</string>
+    <string name="setup_file_open">Open</string>
+    <string name="setup_file_wrong_password">Wrong password, or the file was changed.</string>
+    <string name="setup_file_not_setup">This isn\'t a Tunnelkey setup file.</string>
+    <string name="setup_file_damaged">The setup file is damaged.</string>
 </resources>

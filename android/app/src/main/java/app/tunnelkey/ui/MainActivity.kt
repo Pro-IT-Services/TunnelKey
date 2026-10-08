@@ -108,15 +108,17 @@ class MainActivity : FragmentActivity() {
         handleIncoming(intent)
     }
 
-    /** "Open with Tunnelkey" or share sheet with an .ovpn file (normal mode only). */
+    /**
+     * "Open with Tunnelkey" or the share sheet: an .ovpn file (normal mode only)
+     * or a .tunnelkey setup file (also replaces a provisioned configuration).
+     */
     private fun handleIncoming(intent: Intent?) {
-        if (vm.managed.isActive) return
         val uri: Uri? = when (intent?.action) {
             Intent.ACTION_VIEW -> intent.data
             Intent.ACTION_SEND -> IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
             else -> null
         }
-        if (uri != null) vm.import(uri)
+        if (uri != null) vm.import(uri, profilesAllowed = !vm.managed.isActive)
     }
 
     private companion object {
@@ -151,6 +153,7 @@ private fun App(vm: MainViewModel) {
     val unlocked by vm.unlocked.collectAsStateWithLifecycle()
     val hint by vm.hint.collectAsStateWithLifecycle()
     val retryIn by vm.retryIn.collectAsStateWithLifecycle()
+    val setupFile by vm.setupFile.collectAsStateWithLifecycle()
 
     val selected = profiles.firstOrNull { it.id == selectedId } ?: profiles.firstOrNull()
     var error by remember { mutableStateOf<Pair<Int, String>?>(null) }
@@ -442,6 +445,14 @@ private fun App(vm: MainViewModel) {
             dismissButton = if (link.kind == "rdp") {
                 { TextButton(onClick = { missingApp = null }) { Text(stringResource(R.string.action_cancel)) } }
             } else null,
+        )
+    }
+
+    setupFile?.let { request ->
+        SetupFileDialog(
+            request = request,
+            onOpen = { password -> vm.openSetupFile(password) { nav.navigate(Routes.SETUP) { launchSingleTop = true } } },
+            onDismiss = vm::dismissSetupFile,
         )
     }
 

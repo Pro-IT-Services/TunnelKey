@@ -191,12 +191,12 @@
 
     <!-- Import -->
     <string name="import_sheet_title">Pridať VPN profil</string>
-    <string name="import_choose_file">Vybrať súbor .ovpn</string>
-    <string name="import_choose_file_body">Prehliadať cez Moje súbory alebo iného správcu súborov.</string>
+    <string name="import_choose_file">Vybrať súbor</string>
+    <string name="import_choose_file_body">Profil .ovpn alebo súbor nastavenia .tunnelkey od správcu.</string>
     <string name="import_paste">Vložiť zo schránky</string>
     <string name="import_paste_body">Najprv skopírujte text profilu, potom ho vložte sem.</string>
     <string name="import_scan_body">Naskenujte QR kód od vášho správcu.</string>
-    <string name="import_chooser_title">Vybrať súbor .ovpn pomocou</string>
+    <string name="import_chooser_title">Vybrať súbor pomocou</string>
     <string name="import_clipboard_empty">Schránka neobsahuje OpenVPN profil. Najprv skopírujte celý text súboru.</string>
     <string name="import_pasted_name">Vložený profil</string>
 
@@ -212,4 +212,11 @@
     <string name="vpn_disclosure_title">Ako Tunnelkey používa VPN</string>
     <string name="vpn_disclosure_body">Na pripojenie používa Tunnelkey službu VPN systému Android a vytvorí šifrovaný OpenVPN tunel na server z vášho profilu. Počas pripojenia ide sieťová komunikácia telefónu cez tento server, ktorý prevádzkujete vy alebo vaša organizácia.\n\nTunnelkey nezbiera, nezaznamenáva, nesleduje, nemení ani nepredáva vašu komunikáciu ani osobné údaje a vývojárovi nič neposiela.\n\nV ďalšom kroku vás Android požiada o povolenie VPN pripojenia.</string>
     <string name="vpn_disclosure_accept">Súhlasím a pokračovať</string>
+    <string name="setup_file_title">Otvoriť súbor nastavenia</string>
+    <string name="setup_file_body">Zadajte heslo k tomuto súboru, ktoré vám dal správca.</string>
+    <string name="setup_file_password">Heslo súboru</string>
+    <string name="setup_file_open">Otvoriť</string>
+    <string name="setup_file_wrong_password">Nesprávne heslo alebo bol súbor zmenený.</string>
+    <string name="setup_file_not_setup">Toto nie je súbor nastavenia Tunnelkey.</string>
+    <string name="setup_file_damaged">Súbor nastavenia je poškodený.</string>
 </resources>

@@ -92,8 +92,10 @@ object SetupCodes {
     private const val MAX_INFLATED = 512 * 1024
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun decode(base45: String): SetupPayload {
-        val compressed = base45Decode(base45)
+    fun decode(base45: String): SetupPayload = fromZlib(base45Decode(base45))
+
+    /** zlib-compressed JSON payload, shared with encrypted setup files. */
+    fun fromZlib(compressed: ByteArray): SetupPayload {
         val raw = inflate(compressed)
         val payload = try {
             json.decodeFromString<SetupPayload>(raw.toString(Charsets.UTF_8))
