@@ -92,10 +92,13 @@ $SignEnabled = [bool]($env:ARTIFACT_SIGNING_METADATA -or $env:SIGN_CERT_SHA1 -or
 # profile. Sign in first with `az login` (or a service principal / OIDC in CI).
 function Get-ArtifactSigningDlib {
     if ($env:ARTIFACT_SIGNING_DLIB) { return $env:ARTIFACT_SIGNING_DLIB }
+    # Where the winget package installs it (no x64 subfolder).
+    $default = Join-Path $env:LOCALAPPDATA 'Microsoft\MicrosoftArtifactSigningClientTools\Azure.CodeSigning.Dlib.dll'
+    if (Test-Path $default) { return $default }
     $roots = @($env:LOCALAPPDATA, $env:ProgramFiles, ${env:ProgramFiles(x86)}) | Where-Object { $_ }
     foreach ($root in $roots) {
         $found = Get-ChildItem $root -Recurse -Filter 'Azure.CodeSigning.Dlib.dll' -ErrorAction SilentlyContinue |
-            Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+            Sort-Object { $_.FullName -notmatch '\\x64\\' } | Select-Object -First 1
         if ($found) { return $found.FullName }
     }
     throw 'ARTIFACT_SIGNING_METADATA is set but Azure.CodeSigning.Dlib.dll was not found (install with: winget install -e --id Microsoft.Azure.ArtifactSigningClientTools, or set ARTIFACT_SIGNING_DLIB)'
