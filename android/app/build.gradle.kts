@@ -20,7 +20,8 @@ android {
     }
 
     // Upload key for Google Play. Create keystore.properties next to this
-    // project's settings.gradle.kts (never commit it) — see docs/play-store/README.md.
+    // project's settings.gradle.kts (never commit it) with storeFile,
+    // storePassword, keyAlias and keyPassword.
     val keystoreProps = rootProject.file("keystore.properties").takeIf { it.exists() }?.let { f ->
         Properties().apply { f.inputStream().use(::load) }
     }
@@ -61,15 +62,6 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            all { test ->
-                // ./gradlew :app:testDebugUnitTest -PplayScreenshots renders the store screenshots.
-                if (project.hasProperty("playScreenshots")) {
-                    test.systemProperty("playScreenshots", "true")
-                    test.systemProperty("roborazzi.test.record", "true")
-                    test.systemProperty("screenshotDir", rootProject.file("../docs/play-store/screens-raw").absolutePath)
-                    test.systemProperty("playLocale", (project.findProperty("playLocale") ?: "en-US").toString())
-                }
-            }
         }
     }
 }
@@ -106,8 +98,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
-    testImplementation(libs.roborazzi)
-    testImplementation(libs.roborazzi.compose)
     testImplementation(libs.androidx.test.junit)
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)

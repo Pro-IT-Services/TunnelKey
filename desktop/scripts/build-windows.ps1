@@ -17,7 +17,8 @@
   Code signing is off unless one of these is set:
     ARTIFACT_SIGNING_METADATA  path to metadata.json for Azure Artifact Signing
                                (optional ARTIFACT_SIGNING_DLIB); sign in with
-                               `az login` first. See docs/windows-code-signing.md.
+                               `az login` first. The JSON names Endpoint,
+                               CodeSigningAccountName and CertificateProfileName.
     SIGN_CERT_SHA1             certificate thumbprint in the certificate store
     SIGN_PFX (+ SIGN_PFX_PASSWORD) Optional:
   SIGNTOOL (path to signtool.exe), SIGN_TIMESTAMP_URL.

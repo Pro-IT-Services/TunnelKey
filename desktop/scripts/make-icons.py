@@ -2,8 +2,7 @@
 """Regenerate desktop icons from the shared Tunnelkey artwork.
 
 Source: ios/.../AppIcon-1024.png (native 1024 px, same artwork as the
-Android/fastlane icon). Falls back to the 512 px fastlane icon, upscaled with
-Lanczos, if the iOS asset is missing.
+Android icon).
 
 Outputs (relative to desktop/):
   build/appicon.png                              1024x1024 RGBA (Wails: macOS icns, Linux)
@@ -24,19 +23,14 @@ REPO = os.path.dirname(DESKTOP)
 
 SRC_1024 = os.path.join(REPO, "ios", "Tunnelkey", "Resources", "Assets.xcassets",
                         "AppIcon.appiconset", "AppIcon-1024.png")
-SRC_512 = os.path.join(REPO, "fastlane", "metadata", "android", "en-US", "images", "icon.png")
 
 ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]
 LINUX_SIZES = [32, 48, 64, 128, 256, 512]
 
 
 def load_master():
-    if os.path.exists(SRC_1024):
-        im = Image.open(SRC_1024).convert("RGBA")
-        src = SRC_1024
-    else:
-        im = Image.open(SRC_512).convert("RGBA")
-        src = SRC_512
+    im = Image.open(SRC_1024).convert("RGBA")
+    src = SRC_1024
     if im.size != (1024, 1024):
         im = im.resize((1024, 1024), Image.LANCZOS)
     print("source:", os.path.relpath(src, REPO))

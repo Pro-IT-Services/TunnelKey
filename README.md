@@ -31,8 +31,7 @@ tunnelkey/
 ├── ios/       SwiftUI app + packet tunnel extension (OpenVPNAdapter)
 ├── desktop/   Windows/macOS/Linux app (Go + Wails) and its helper service
 ├── server/    Go provisioning server with embedded admin web UI
-├── fastlane/  Google Play store listing (texts + graphics)
-└── docs/      Setup code format, privacy policy, Play publishing guide
+└── docs/      Setup code format, privacy policy, browser-only setup page
 ```
 
 ## How 2FA works
@@ -202,11 +201,11 @@ cd desktop
 
 macOS and Linux packages are built by the `desktop` GitHub Actions workflow.
 
-## Publishing
+## Privacy
 
-Google Play listing texts (English, Slovak), graphics, screenshots, privacy
-policy and step-by-step Play Console answers: [docs/play-store](docs/play-store/README.md).
-Privacy policy: <https://pro-it-services.github.io/TunnelKey/privacy-policy.html>.
+Tunnelkey collects no data. Privacy policy:
+<https://pro-it-services.github.io/TunnelKey/privacy-policy.html> (source
+`docs/privacy-policy.md`; regenerate the HTML with `python docs/build_pages.py`).
 
 ## Licence
 

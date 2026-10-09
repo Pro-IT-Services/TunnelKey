@@ -16,8 +16,8 @@ env:
 jobs:
   windows:
     runs-on: windows-latest
-    # For code signing in CI, uncomment: the Azure federated credential trusts
-    # this environment (docs/windows-code-signing.md, section 8).
+    # For code signing in CI, uncomment: the Azure federated credential
+    # (Entra app, entity type Environment) trusts this environment.
     # environment: release
     # OIDC token for Azure Artifact Signing (only used when it is configured).
     permissions:
@@ -52,7 +52,8 @@ jobs:
           wix extension add -g WixToolset.Util.wixext/${{ env.WIX_VERSION }}
           wix extension add -g WixToolset.Bal.wixext/${{ env.WIX_VERSION }}
 
-      # Code signing with Azure Artifact Signing, see docs/windows-code-signing.md.
+      # Code signing with Azure Artifact Signing (OIDC login, signer role on the
+      # signing account).
       # Runs only when the repository variable ARTIFACT_SIGNING_ACCOUNT is set;
       # otherwise the build is unsigned.
       - name: Azure login (code signing)
