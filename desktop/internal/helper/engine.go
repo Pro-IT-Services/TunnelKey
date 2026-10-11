@@ -27,6 +27,8 @@ const (
 	ConnectTimeout = 30 * time.Second
 	// credsTimeout is how long a reconnect waits for the app to supply credentials.
 	credsTimeout = 90 * time.Second
+	// holdRetry: how often "hold release" is repeated until openvpn moves on.
+	holdRetry = 400 * time.Millisecond
 	stopTimeout  = 8 * time.Second
 	logLimit     = 1000
 )
@@ -60,6 +62,9 @@ type session struct {
 	staticChal bool
 	// awaitingCreds: waiting for the app, so the connect timeout doesn't apply.
 	awaitingCreds bool
+	// held: openvpn is waiting for "hold release"; releasing: releaseHold runs.
+	// settingUp: the first commands are still being sent, so not yet.
+	held, releasing, settingUp bool
 }
 
 // New returns an idle engine.
@@ -228,7 +233,8 @@ func (e *Engine) stop(s *session) {
 	m := s.m
 	e.mu.Unlock()
 	if m != nil {
-		m.send("signal SIGTERM")
+		// Not on the caller's goroutine: stop is also called by the reader.
+		go m.command("signal SIGTERM")
 	} else if s.cmd != nil && s.cmd.Process != nil {
 		terminate(s.cmd.Process)
 	}
@@ -351,7 +357,7 @@ func (e *Engine) start(s *session, req ipc.Request) error {
 		e.stop(s)
 		return fmt.Errorf("could not reach OpenVPN's management interface: %w", err)
 	}
-	m := &mgmt{conn: conn, r: bufio.NewReader(conn)}
+	m := newMgmt(conn)
 	if err := m.login(secret); err != nil {
 		conn.Close()
 		e.stop(s)
@@ -360,12 +366,60 @@ func (e *Engine) start(s *session, req ipc.Request) error {
 	e.mu.Lock()
 	s.m = m
 	e.mu.Unlock()
+	s.held, s.settingUp = true, true
 	go e.readManagement(s)
-	for _, c := range []string{"state on", "bytecount 2", "log on", "hold release"} {
-		s.m.send(c)
-	}
+	go func() {
+		for _, c := range []string{"state on", "bytecount 2", "log on"} {
+			if err := m.command(c); err != nil {
+				e.log("%v (%s)", err, c)
+			}
+		}
+		e.mu.Lock()
+		s.settingUp = false
+		e.mu.Unlock()
+		e.releaseHold(s)
+	}()
 	go e.watchConnectTimeout(s)
 	return nil
+}
+
+// releaseHold repeats "hold release" until openvpn moves on. On Windows
+// openvpn sometimes misses the command, or accepts it and keeps waiting
+// until the next command arrives; a repeat always gets it going.
+func (e *Engine) releaseHold(s *session) {
+	e.mu.Lock()
+	if s.releasing || s.settingUp {
+		e.mu.Unlock()
+		return
+	}
+	s.releasing = true
+	e.mu.Unlock()
+	defer func() {
+		e.mu.Lock()
+		s.releasing = false
+		e.mu.Unlock()
+	}()
+	for {
+		e.mu.Lock()
+		waiting := s.held && !s.stopping
+		e.mu.Unlock()
+		if !waiting {
+			return
+		}
+		s.m.command("hold release")
+		select {
+		case <-s.done:
+			return
+		case <-time.After(holdRetry):
+		}
+	}
+}
+
+// moved notes that openvpn has left the hold.
+func (e *Engine) moved(s *session) {
+	e.mu.Lock()
+	s.held = false
+	e.mu.Unlock()
 }
 
 func (m *mgmt) login(secret string) error {
@@ -451,11 +505,15 @@ func (e *Engine) readManagement(s *session) {
 			return
 		}
 		if !strings.HasPrefix(line, ">") {
-			continue // command replies
+			if strings.HasPrefix(line, "SUCCESS:") || strings.HasPrefix(line, "ERROR:") {
+				s.m.reply(line)
+			}
+			continue
 		}
 		kind, payload, _ := strings.Cut(line[1:], ":")
 		switch kind {
 		case "STATE":
+			e.moved(s)
 			e.onState(s, parseState(payload))
 		case "BYTECOUNT":
 			if in, out, ok := parseByteCount(payload); ok && e.current(s) {
@@ -464,12 +522,20 @@ func (e *Engine) readManagement(s *session) {
 		case "LOG":
 			e.log("%s", parseLog(payload))
 		case "PASSWORD":
+			e.moved(s)
 			e.onPassword(s, parsePassword(payload))
 		case "FATAL":
+			if strings.Contains(payload, "could not read Auth") {
+				// What openvpn says when it is stopped while waiting for the sign-in.
+				payload = "OpenVPN was stopped before the sign-in was completed."
+			}
 			e.log("Fatal: %s", payload)
 			e.fail(s, ipc.Other, payload, true)
 		case "HOLD":
-			s.m.send("hold release")
+			e.mu.Lock()
+			s.held = true
+			e.mu.Unlock()
+			go e.releaseHold(s)
 		}
 	}
 }
@@ -567,7 +633,12 @@ func (e *Engine) answerCredentials(s *session, staticChallenge bool) {
 		password = staticChallengeResponse(c.Password, c.Response)
 	}
 	for _, cmd := range credentialCommands("Auth", c.Username, password) {
-		s.m.send(cmd)
+		if err := s.m.command(cmd); err != nil {
+			e.log("Could not pass the sign-in to OpenVPN: %v", err)
+			e.fail(s, ipc.Other, "", false)
+			e.stop(s)
+			return
+		}
 	}
 }
 

@@ -47,18 +47,31 @@ func fakeOpenVPN(args []string) {
 	}
 	fmt.Fprint(c, "SUCCESS: password is correct\r\n>HOLD:Waiting for hold release:0\r\n")
 	var user string
+	released, holds := false, 0
+	buf := make([]byte, 4096)
 	for {
-		line, err := r.ReadString('\n')
+		// Like openvpn on Windows: only the first command of a burst is
+		// handled, the rest is lost.
+		time.Sleep(30 * time.Millisecond)
+		n, err := r.Read(buf)
 		if err != nil {
 			os.Exit(4)
 		}
+		line, _, _ := strings.Cut(string(buf[:n]), "\n")
 		line = strings.TrimSpace(line)
 		switch {
 		case line == "hold release":
-			fmt.Fprint(c, ">STATE:1,WAIT,,,,,,\r\n>PASSWORD:Need 'Auth' username/password\r\n")
+			fmt.Fprint(c, "SUCCESS: hold release succeeded\r\n")
+			holds++
+			if !released && holds > 1 {
+				released = true
+				fmt.Fprint(c, ">STATE:1,WAIT,,,,,,\r\n>PASSWORD:Need 'Auth' username/password\r\n")
+			}
 		case strings.HasPrefix(line, "username "):
 			user = line
+			fmt.Fprint(c, "SUCCESS: 'Auth' username entered, but not yet verified\r\n")
 		case strings.HasPrefix(line, "password "):
+			fmt.Fprint(c, "SUCCESS: 'Auth' password entered, but not yet verified\r\n")
 			if user == `username "Auth" "marko"` && line == `password "Auth" "pw123456"` {
 				fmt.Fprint(c, ">STATE:2,CONNECTED,SUCCESS,10.8.0.2,1.2.3.4,1194,,\r\n>BYTECOUNT:100,200\r\n")
 			} else {
@@ -66,8 +79,10 @@ func fakeOpenVPN(args []string) {
 				os.Exit(0)
 			}
 		case line == "signal SIGTERM":
-			fmt.Fprint(c, ">STATE:4,EXITING,SIGTERM,,,,,\r\n")
+			fmt.Fprint(c, "SUCCESS: signal SIGTERM thrown\r\n>STATE:4,EXITING,SIGTERM,,,,,\r\n")
 			os.Exit(0)
+		default:
+			fmt.Fprint(c, "SUCCESS: ok\r\n")
 		}
 	}
 }

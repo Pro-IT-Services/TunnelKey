@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 // mgmt talks to openvpn's management interface.
@@ -15,6 +16,48 @@ type mgmt struct {
 	conn net.Conn
 	r    *bufio.Reader
 	wmu  sync.Mutex
+
+	cmdMu   sync.Mutex
+	replies chan string // SUCCESS:/ERROR: lines, fed by the reader
+}
+
+// replyTimeout bounds the wait for a command's reply.
+const replyTimeout = 3 * time.Second
+
+func newMgmt(conn net.Conn) *mgmt {
+	return &mgmt{conn: conn, r: bufio.NewReader(conn), replies: make(chan string, 8)}
+}
+
+// command sends one command and waits for its reply before returning.
+// openvpn on Windows loses commands that arrive while it is still handling
+// the previous one (a lost "hold release" leaves it waiting forever), so
+// commands must never be written back to back.
+func (m *mgmt) command(cmd string) error {
+	m.cmdMu.Lock()
+	defer m.cmdMu.Unlock()
+	for len(m.replies) > 0 {
+		<-m.replies
+	}
+	if err := m.send(cmd); err != nil {
+		return err
+	}
+	select {
+	case reply := <-m.replies:
+		if strings.HasPrefix(reply, "ERROR:") {
+			return fmt.Errorf("openvpn refused a command: %s", strings.TrimSpace(reply[6:]))
+		}
+		return nil
+	case <-time.After(replyTimeout):
+		return fmt.Errorf("openvpn didn't answer a command within %s", replyTimeout)
+	}
+}
+
+// reply hands a command reply from the reader to command.
+func (m *mgmt) reply(line string) {
+	select {
+	case m.replies <- line:
+	default:
+	}
 }
 
 func (m *mgmt) send(cmd string) error {
