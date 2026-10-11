@@ -112,6 +112,7 @@ function updateLive() {
 function errorText(code) {
   const msg = String(code?.message ?? code ?? "");
   if (msg.startsWith("profile:")) return t("error_profile", msg.slice(8).trim());
+  if (msg.startsWith("link_failed:")) return t("link_failed", msg.slice(12).trim());
   if (has(msg)) return t(msg);
   return t("unexpected", msg);
 }

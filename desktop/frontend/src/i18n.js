@@ -116,6 +116,7 @@ const en = {
   link_kind_app: "App",
   link_opens_after_connect: "Connecting — {0} opens when the VPN is up.",
   link_unsafe: "This link can't be opened safely.",
+  link_failed: "The link couldn't be opened: {0}",
 
   setup_open_title: "Open setup file",
   setup_open_body: "Enter the password your administrator gave you for this file.",
@@ -323,6 +324,7 @@ const sk = {
   link_kind_app: "Aplikácia",
   link_opens_after_connect: "Pripája sa — {0} sa otvorí po pripojení VPN.",
   link_unsafe: "Tento odkaz nemožno bezpečne otvoriť.",
+  link_failed: "Odkaz sa nepodarilo otvoriť: {0}",
 
   setup_open_title: "Otvoriť súbor nastavenia",
   setup_open_body: "Zadajte heslo k tomuto súboru, ktoré vám dal správca.",

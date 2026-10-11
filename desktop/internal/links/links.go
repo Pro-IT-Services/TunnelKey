@@ -26,31 +26,39 @@ type RDP struct {
 	Username string
 }
 
+// Replaced in tests.
+var (
+	launchURL = openURL
+	launchRDP = openRDP
+)
+
 // Open opens a link of kind web, rdp or app.
 func Open(kind, uri, title string) error {
-	u, err := url.Parse(strings.TrimSpace(uri))
-	if err != nil || u.Scheme == "" {
-		return ErrUnsafe
-	}
-	scheme := strings.ToLower(u.Scheme)
-	switch kind {
-	case "web":
-		if scheme != "http" && scheme != "https" {
-			return ErrUnsafe
-		}
-		return openURL(u.String())
-	case "rdp":
+	uri = strings.TrimSpace(uri)
+	if kind == "rdp" {
+		// Microsoft's rdp:// form (full%20address=s:host:port&username=s:user)
+		// is not a valid URL, so it has its own parser.
 		r, err := ParseRDP(uri)
 		if err != nil {
 			return err
 		}
-		return openRDP(r, uri, title)
-	default:
-		if blocked[scheme] || len(scheme) == 1 { // "c:" is a drive letter
+		return launchRDP(r, uri, title)
+	}
+	u, err := url.Parse(uri)
+	if err != nil || u.Scheme == "" {
+		return ErrUnsafe
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if kind == "web" {
+		if scheme != "http" && scheme != "https" {
 			return ErrUnsafe
 		}
-		return openURL(u.String())
+		return launchURL(u.String())
 	}
+	if blocked[scheme] || len(scheme) == 1 { // "c:" is a drive letter
+		return ErrUnsafe
+	}
+	return launchURL(u.String())
 }
 
 // ParseRDP reads rdp://full%20address=s:host:port&username=s:user.

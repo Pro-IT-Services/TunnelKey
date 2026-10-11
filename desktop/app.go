@@ -1103,7 +1103,10 @@ func (a *App) OpenLink(i int) error {
 	}
 	l := m.Links[i]
 	if err := links.Open(l.Kind, l.URI, l.Title); err != nil {
-		return errors.New("link_unsafe")
+		if errors.Is(err, links.ErrUnsafe) {
+			return errors.New("link_unsafe")
+		}
+		return errors.New("link_failed:" + err.Error())
 	}
 	return nil
 }
