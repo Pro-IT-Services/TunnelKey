@@ -58,6 +58,8 @@ authenticator code — for Android, iOS, Windows, macOS and Linux — with a
 self-hosted provisioning server for organisations.
 
 - [Create setup codes and desktop setup files](provision/) — runs entirely in your browser, nothing is uploaded
+- [Android app on Google Play](https://play.google.com/store/apps/details?id=com.proitservices.tunnelkey)
+- iOS app: waiting for publication on the App Store
 - [Desktop downloads](https://github.com/Pro-IT-Services/TunnelKey/releases)
 - [Privacy policy](privacy-policy.html)
 - [Source code on GitHub](https://github.com/Pro-IT-Services/TunnelKey)

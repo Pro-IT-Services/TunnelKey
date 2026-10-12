@@ -5,6 +5,17 @@ Open-source OpenVPN client for **Android**, **iOS**, **Windows**, **macOS** and
 **provisioning server** that puts a complete, locked-down configuration onto a
 phone with one scan, or onto a computer with one password-encrypted file.
 
+## Get the app
+
+| Platform | Where |
+|----------|-------|
+| **Android** | [Google Play](https://play.google.com/store/apps/details?id=com.proitservices.tunnelkey) |
+| **iOS** | Waiting for publication on the App Store |
+| **Windows** | [Latest release](https://github.com/Pro-IT-Services/TunnelKey/releases/latest) — `Tunnelkey-<version>-setup.exe` |
+| **macOS, Linux** | Build from source, see [desktop/README.md](desktop/README.md) |
+
+## What it does
+
 - **Password + TOTP** — for OpenVPN servers whose 2FA plugin expects the
   authenticator code glued to the password (`hunter2` + `123456` →
   `hunter2123456`, or code first). Profiles with `static-challenge` are
